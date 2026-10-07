@@ -11,7 +11,7 @@ Data model: [`erd.dbml`](erd.dbml). 18 endpoints.
 | Base URL | `/api/v1` |
 | Format | JSON, `Content-Type: application/json` (except the photo upload: `multipart/form-data`). Fields are **camelCase** (DB stays snake_case; Prisma `@map`). |
 | IDs | UUID v7 strings. |
-| Auth | `Authorization: Bearer <accessToken>`. Single JWT, no refresh token. 🔓 = public; everything else → `401` without a valid token. |
+| Auth | `Authorization: Bearer <accessToken>`. Single JWT, no refresh token. Endpoints marked `(public)` need no token; everything else → `401` without a valid token. |
 | Money | `priceCents`: **always an integer in cents**, no currency code. The frontend always shows "$" as a generic price sign, for every city (GEN-2). `$1.800,00` → `180000`. Min `100` ($1). The frontend divides by 100 only to display. |
 | Pickup times | `"HH:mm"` 24h, **local time of the meetup city**, no timezone. |
 | System timestamps | ISO 8601 UTC: `"2026-10-07T15:04:05.000Z"`. |
@@ -164,7 +164,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
 
 ## 3. Auth
 
-### `POST /auth/register` 🔓
+### `POST /auth/register` (public)
 ```json
 {
   "email": "laura@example.com",
@@ -185,7 +185,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
 `201 Created` → same body as login.
 Errors: `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`.
 
-### `POST /auth/login` 🔓
+### `POST /auth/login` (public)
 ```json
 { "email": "laura@example.com", "password": "…" }
 ```
@@ -203,10 +203,10 @@ Errors: `400 VALIDATION_ERROR`, `401 INVALID_CREDENTIALS` (same for unknown emai
 
 ## 4. Catalog
 
-### `GET /categories` 🔓
+### `GET /categories` (public)
 `200 OK` → `[{ "id", "name", "slug" }]` sorted by `name`.
 
-### `GET /listings` 🔓 — feed, search, category filter
+### `GET /listings` (public) — feed, search, category filter
 Only `status = ACTIVE`. Order: `publishedAt DESC, id DESC`.
 
 | Query | Rule |
@@ -217,7 +217,7 @@ Only `status = ACTIVE`. Order: `publishedAt DESC, id DESC`.
 
 `200 OK` → `{ "data": ListingCard[], "nextCursor": "…" | null }`
 
-### `GET /listings/:listingId` 🔓 (token optional)
+### `GET /listings/:listingId` (public, token optional)
 ```json
 {
   "id": "0192…",
@@ -428,26 +428,31 @@ Errors: `400 VALIDATION_ERROR`, `403 NOT_RESERVATION_BUYER`, `404 RESERVATION_NO
 
 ## 7. Endpoint index
 
+Auth column:
+- `Public`: no token needed.
+- `Required`: any logged-in user.
+- `Seller`, `Buyer`, `Party`: a logged-in user who is, respectively, the seller, the buyer, or either side of that listing or reservation.
+
 | Method | Path | Auth | Screen |
 |---|---|---|---|
-| POST | `/auth/register` | 🔓 | Registro |
-| POST | `/auth/login` | 🔓 | Login |
-| GET | `/me` | ✅ | |
-| GET | `/categories` | 🔓 | Feed filter, Nuevo artículo |
-| GET | `/listings` | 🔓 | Feed |
-| GET | `/listings/:listingId` | 🔓 | Detalle del artículo |
-| POST | `/uploads/photos` | ✅ | Nuevo artículo |
-| POST | `/listings` | ✅ | Nuevo artículo → Continuar → lugares |
-| GET | `/me/listings` | ✅ | Vendedor: Activos / En proceso / Completados |
-| PATCH | `/listings/:listingId` | ✅ seller | Editar artículo (Active only) |
-| POST | `/listings/:listingId/pickup-options` | ✅ seller | Set my pickup times: agregar |
-| DELETE | `/listings/:listingId/pickup-options/:pickupOptionId` | ✅ seller | Set my pickup times: quitar |
-| POST | `/reservations` | ✅ | Agendar recogida |
-| GET | `/me/purchases` | ✅ | Mis compras |
-| GET | `/reservations/:reservationId` | ✅ party | Resumen de la recogida |
-| POST | `/reservations/:reservationId/handover` | ✅ seller | Confirmar entrega |
-| POST | `/reservations/:reservationId/reception` | ✅ buyer | Lista de recepción |
-| POST | `/reservations/:reservationId/rating` | ✅ buyer | Calificar vendedor |
+| POST | `/auth/register` | Public | Registro |
+| POST | `/auth/login` | Public | Login |
+| GET | `/me` | Required | |
+| GET | `/categories` | Public | Feed filter, Nuevo artículo |
+| GET | `/listings` | Public | Feed |
+| GET | `/listings/:listingId` | Public | Detalle del artículo |
+| POST | `/uploads/photos` | Required | Nuevo artículo |
+| POST | `/listings` | Required | Nuevo artículo → Continuar → lugares |
+| GET | `/me/listings` | Required | Vendedor: Activos / En proceso / Completados |
+| PATCH | `/listings/:listingId` | Seller | Editar artículo (Active only) |
+| POST | `/listings/:listingId/pickup-options` | Seller | Set my pickup times: agregar |
+| DELETE | `/listings/:listingId/pickup-options/:pickupOptionId` | Seller | Set my pickup times: quitar |
+| POST | `/reservations` | Required | Agendar recogida |
+| GET | `/me/purchases` | Required | Mis compras |
+| GET | `/reservations/:reservationId` | Party | Resumen de la recogida |
+| POST | `/reservations/:reservationId/handover` | Seller | Confirmar entrega |
+| POST | `/reservations/:reservationId/reception` | Buyer | Lista de recepción |
+| POST | `/reservations/:reservationId/rating` | Buyer | Calificar vendedor |
 
 ## 8. Error codes
 
