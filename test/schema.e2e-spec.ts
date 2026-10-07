@@ -61,13 +61,16 @@ describe('Database schema (e2e)', () => {
     });
   }
 
-  beforeEach(async () => {
-    await prisma.$executeRawUnsafe(
+  const truncateAll = () =>
+    prisma.$executeRawUnsafe(
       'TRUNCATE users, categories, listings, listing_photos, pickup_options, reservations, reception_checklists, seller_ratings CASCADE',
     );
-  });
 
+  beforeEach(truncateAll);
+
+  // Leave the test database empty so future migrations never trip on fixtures.
   afterAll(async () => {
+    await truncateAll();
     await prisma.$disconnect();
   });
 
