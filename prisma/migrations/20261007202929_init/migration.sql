@@ -5,6 +5,9 @@ CREATE TYPE "listing_condition" AS ENUM ('LIKE_NEW', 'GENTLY_USED', 'HEAVILY_USE
 CREATE TYPE "listing_status" AS ENUM ('ACTIVE', 'PENDING', 'COMPLETED');
 
 -- CreateEnum
+CREATE TYPE "city" AS ENUM ('COCHABAMBA_BO', 'AREQUIPA_PE', 'SAN_SALVADOR_SV', 'UTAH_US');
+
+-- CreateEnum
 CREATE TYPE "weekday" AS ENUM ('MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY');
 
 -- CreateTable
@@ -14,7 +17,7 @@ CREATE TABLE "users" (
     "password_hash" VARCHAR(255) NOT NULL,
     "full_name" VARCHAR(120) NOT NULL,
     "phone_e164" VARCHAR(20) NOT NULL,
-    "city" VARCHAR(100) NOT NULL,
+    "city" "city" NOT NULL,
     "avatar_url" VARCHAR(500),
     "is_verified" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -185,6 +188,7 @@ ALTER TABLE "seller_ratings" ADD CONSTRAINT "seller_ratings_reservation_id_fkey"
 
 -- AddForeignKey
 ALTER TABLE "seller_ratings" ADD CONSTRAINT "seller_ratings_seller_id_fkey" FOREIGN KEY ("seller_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
 
 -- CHECK constraints (hand-written: Prisma does not generate them). See docs/erd.dbml.
 ALTER TABLE "listings" ADD CONSTRAINT "listings_price_cents_check" CHECK ("price_cents" >= 100);
