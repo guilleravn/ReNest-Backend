@@ -1,14 +1,20 @@
 # ReNest Backend
 
-NestJS + Prisma + PostgreSQL API.
+REST API for ReNest, a secondhand marketplace for LatAm where buyers reserve an item together with a pickup slot and both sides confirm the exchange. Built with NestJS, Prisma and PostgreSQL.
 
-## Docs
+Frontend: [ReNest-Frontend](https://github.com/guilleravn/ReNest-Frontend). Work tracking: Linear project "ReNest MVP R1".
 
-Single source of truth for data and endpoints. Update them in the same PR as the code that changes them.
+## Documentation
 
-- [`docs/api-contract.md`](docs/api-contract.md): endpoints, shapes and error codes.
-- [`docs/erd.dbml`](docs/erd.dbml): data model (paste into dbdiagram.io to render).
-- [`docs/business-rules.md`](docs/business-rules.md): rule IDs (`RES-5`, `C1`…) referenced by tickets.
+These docs are the single source of truth. Update them in the same PR as the code that changes them.
+
+| Doc | What it holds |
+|---|---|
+| [docs/business-rules.md](docs/business-rules.md) | Product rules by ID (`RES-5`), PRD deviations, metrics |
+| [docs/api-contract.md](docs/api-contract.md) | Endpoints, shapes and error codes |
+| [docs/erd.dbml](docs/erd.dbml) | Data model (paste into dbdiagram.io to render) |
+| [docs/decisions.md](docs/decisions.md) | Technical and process decisions, with their reasons |
+| [CLAUDE.md](CLAUDE.md) | Conventions and git workflow (read by humans and Claude) |
 
 ## Requirements
 
@@ -33,9 +39,13 @@ npm run start:dev
 
 | Script | What it does |
 |---|---|
-| `npm run lint` | oxlint (type-aware) over `src/` and `test/`. |
-| `npm test` | Unit tests (`*.spec.ts`). |
-| `npm run test:e2e` | e2e tests (`test/*.e2e-spec.ts`) against `DATABASE_URL_TEST`. The database is created if missing and migrations are applied before the run. Needs `npm run db:up`. |
+| `npm run start:dev` | Runs the API in watch mode. |
+| `npm run db:up` / `db:down` | Starts or stops Postgres in Docker. |
+| `npm run db:migrate` | Creates and applies a migration (`-- --name <change>`). |
+| `npm run db:studio` | Opens a browser for the database. |
+| `npm run lint` | Runs oxlint (type-aware) over `src/` and `test/`. |
+| `npm test` | Runs the unit tests (`*.spec.ts`). |
+| `npm run test:e2e` | Runs the e2e tests (`test/*.e2e-spec.ts`) against `DATABASE_URL_TEST`. The database is created if missing, and migrations are applied before the run. Needs `npm run db:up`. |
 
 ## Errors
 
@@ -45,4 +55,51 @@ Every error response has the shape from the API contract:
 { "statusCode": 409, "code": "LISTING_NOT_AVAILABLE", "message": "…", "details": null }
 ```
 
-Throw `AppException` with a code from `src/common/errors/error-code.ts` when the frontend needs a specific `code`. Plain Nest exceptions get a generic code by status (`NOT_FOUND`, `CONFLICT`…). Validation errors are `400 VALIDATION_ERROR` with per-field `details`.
+- Throw `AppException` with a code from `src/common/errors/error-code.ts` when the frontend needs a specific `code`.
+- Plain Nest exceptions get a generic code by status (`NOT_FOUND`, `CONFLICT`, ...).
+- Validation errors are `400 VALIDATION_ERROR`, with per-field `details`.
+
+## Contributing
+
+- Branches start from `develop`, and PRs target `develop`. `main` is production and only receives PRs from `develop` (see D-10 in [decisions](docs/decisions.md)).
+- One Linear ticket per branch, using the branch name Linear provides.
+- Commits are small slices in Conventional Commits format, with a `Refs: REN-xx` trailer. Full workflow in [CLAUDE.md](CLAUDE.md#git-workflow).
+- PRs use the template and are merged with **"Create a merge commit"**, never squash or rebase (see D-9 in the backend [decisions](docs/decisions.md)).
+
+## Working with Claude Code
+
+One-time setup per developer:
+
+1. Clone both repos side by side: `ReNest-Backend/` and `ReNest-Frontend/` in the same folder.
+2. In `~/.claude/settings.json`, add the setting below, so that the frontend's `CLAUDE.md` and rules load when you add that repo to a session:
+
+   ```json
+   { "env": { "CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD": "1" } }
+   ```
+3. Install the [GitHub CLI](https://cli.github.com/) and run `gh auth login`. `/ticket` uses it to open PRs.
+4. Start an interactive session in this repo and **accept the trust dialog**. Until you do, the shared `allow` permissions are ignored, so you get more prompts.
+5. Approve the `linear` MCP server and run `/mcp` to sign in. If you already use the Linear connector from claude.ai, decline the project server instead: two Linear servers duplicate tools and waste context.
+6. Check: `/memory` lists both CLAUDE.md files, and `/ticket` shows up when you type `/`.
+
+Daily use:
+
+- Fullstack work: run `claude --add-dir ../ReNest-Frontend` from this repo.
+- `/ticket REN-xx` runs the team workflow: plan (with your approval), branch, tests first, small commits, self-review, PRs.
+- One ticket per session. Run `/clear` before starting the next one.
+
+What's configured, and where:
+
+| File | Purpose | Loaded |
+|---|---|---|
+| `CLAUDE.md` | Commands, architecture, conventions, git workflow | Every session |
+| `.claude/rules/testing.md` | Testing standards | Only when test files are touched |
+| `.claude/skills/ticket/` | `/ticket` workflow | Only when invoked |
+| `.claude/settings.json` | Shared permissions | Every session |
+| `.mcp.json` | Linear MCP server | Every session |
+
+The shared permissions are a convenience, not a security boundary. They:
+- stop Claude's Read tool from opening `.env`;
+- ask before resets and force pushes;
+- refuse explicit pushes to `develop` or `main`.
+
+They can be bypassed, for example through shell commands. The real protection for `develop` and `main` is GitHub branch protection.
