@@ -2,6 +2,14 @@
 
 NestJS + Prisma + PostgreSQL API.
 
+## Docs
+
+Single source of truth for data and endpoints. Update them in the same PR as the code that changes them.
+
+- [`docs/api-contract.md`](docs/api-contract.md): endpoints, shapes and error codes.
+- [`docs/erd.dbml`](docs/erd.dbml): data model (paste into dbdiagram.io to render).
+- [`docs/business-rules.md`](docs/business-rules.md): rule IDs (`RES-5`, `C1`…) referenced by tickets.
+
 ## Requirements
 
 - Node.js 22 (see `.nvmrc`)
