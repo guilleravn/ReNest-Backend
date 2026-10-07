@@ -17,7 +17,7 @@ Data model: [`erd.dbml`](erd.dbml). 18 endpoints.
 | System timestamps | ISO 8601 UTC: `"2026-10-07T15:04:05.000Z"`. |
 | Enums | UPPER_SNAKE, same values as the DB. |
 | Photos | The API never returns `storageKey` outside the upload flow; responses carry a ready-to-use `url`. |
-| Phone | `phoneE164` appears to the user themself (`/me`, auth), as `sellerPhoneE164` on the listing detail for logged-in users, and to the other party inside a reservation. |
+| Phone | `phoneE164` appears to the user themself (`/me`, auth), as `seller.phoneE164` on the listing detail for logged-in users, and to the other party inside a reservation. |
 | Pagination | Only the feed: `?limit=20&cursor=<opaque>` → `{ "data": [...], "nextCursor": "..." \| null }`. `limit` 1–50. Other lists return plain arrays (a user has few items). |
 
 ### 1.1 Error shape
@@ -210,12 +210,11 @@ Only `status = ACTIVE`. Order: `publishedAt DESC, id DESC`.
   "category": { "id": "0192…", "name": "Muebles", "slug": "muebles" },
   "photos": [ /* Photo, 1–3 */ ],
   "pickupOptions": [ /* PickupOption, 1–3 */ ],
-  "seller": { /* SellerPublic */ },
-  "sellerPhoneE164": "+525512345678",
+  "seller": { /* SellerPublic */, "phoneE164": "+525512345678" },
   "viewer": { "isSeller": false, "canReserve": true, "canEdit": false }
 }
 ```
-- `sellerPhoneE164` powers "Doubts about this product?" (WhatsApp). It is **only sent with a valid token**; anonymous → `null` (the app sends the user to login).
+- `seller` = `SellerPublic` + `phoneE164` (C1). `seller.phoneE164` powers "Doubts about this product?" (WhatsApp). Optional auth: it is **only filled with a valid token**; anonymous → `null` (the app sends the user to login). An invalid or expired token is treated as anonymous, not `401`.
 - Non-`ACTIVE` listings still return `200` with their `status` (a shared link shows "Ya reservado"); `pickupOptions` is `[]` then.
 - `canEdit = ACTIVE && isSeller` (edit listing + manage pickup pairs).
 - `viewer` with no token: `{ "isSeller": false, "canReserve": false, "canEdit": false }`. `canReserve = ACTIVE && !isSeller`.
