@@ -5,7 +5,7 @@
 // Conventions:
 // - IDs are UUID v7 (@default(uuid(7))). Enum values are UPPER_SNAKE (same in Prisma and in the DB).
 // - Prisma does not generate CHECK constraints: every "CHECK (...)" below is added by hand in the
-//   migration SQL (prisma migrate dev --create-only).
+//   migration SQL (prisma migrate dev --create-only). Initial ones: prisma/migrations/*_init.
 // - onDelete is Restrict unless the ref says otherwise.
 // - Money: integer cents of the local currency, no currency column (buyer and seller meet in the same city).
 // - Pickup times: local wall-clock time of the meetup city, no timezone. System timestamps are timestamptz.
@@ -102,7 +102,7 @@ Table pickup_options {
   id             uuid [pk]
   listing_id     uuid [not null, ref: > listings.id, note: 'onDelete: Cascade']
   location_label varchar(120) [not null, note: 'PUBLIC place, e.g. "Café Toscano, Av. Álvaro Obregón". Also used to build the Google Maps link']
-  weekdays       "weekday[]" [not null, note: 'Prisma: Weekday[]. CHECK (cardinality(weekdays) >= 1). No duplicates (DTO)']
+  weekdays       "weekday[]" [not null, note: 'Prisma: Weekday[]. Prisma lists are nullable in the DB, so NOT NULL lives in the CHECK: CHECK (weekdays IS NOT NULL AND cardinality(weekdays) >= 1). No duplicates (DTO)']
   start_time     time [not null, note: 'Prisma: DateTime @db.Time']
   end_time       time [not null, note: 'CHECK (end_time > start_time)']
   created_at     timestamptz [not null, default: `now()`]
