@@ -28,6 +28,15 @@ enum ListingStatus {
   @@map("listing_status")
 }
 
+enum City {
+  COCHABAMBA_BO
+  AREQUIPA_PE
+  SAN_SALVADOR_SV
+  UTAH_US
+
+  @@map("city")
+}
+
 enum Weekday {
   MONDAY
   TUESDAY
@@ -46,7 +55,7 @@ model User {
   passwordHash String   @map("password_hash") @db.VarChar(255)
   fullName     String   @map("full_name") @db.VarChar(120)
   phoneE164    String   @map("phone_e164") @db.VarChar(20)
-  city         String   @db.VarChar(100)
+  city         City
   avatarUrl    String?  @map("avatar_url") @db.VarChar(500)
   isVerified   Boolean  @default(false) @map("is_verified")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

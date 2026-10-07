@@ -22,6 +22,13 @@ Enum listing_status {
   COMPLETED   // seller confirmed the handover → seller tab "Completados"
 }
 
+Enum city {
+  COCHABAMBA_BO     // Cochabamba, BO
+  AREQUIPA_PE       // Arequipa, PE
+  SAN_SALVADOR_SV   // San Salvador, SV
+  UTAH_US           // Utah, US
+}
+
 Enum weekday {
   MONDAY
   TUESDAY
@@ -38,7 +45,7 @@ Table users {
   password_hash varchar(255) [not null, note: 'Never returned by the API or logged']
   full_name     varchar(120) [not null]
   phone_e164    varchar(20)  [not null, note: 'Required at sign-up: WhatsApp is how buyer and seller coordinate. Shown to logged-in users on the listing detail ("Doubts about this product?") and to the other party inside a reservation. Never to anonymous visitors']
-  city          varchar(100) [not null, note: 'PUBLIC. Free-text area, e.g. "Roma Norte, CDMX". Shown as the listing location']
+  city          city [not null, note: 'PUBLIC. Picked at sign-up from a fixed list. Shown as the listing location']
   avatar_url    varchar(500) [note: 'Nullable → frontend shows initials. Set by seed only in R1']
   is_verified   boolean [not null, default: false, note: 'Set manually (seed/SQL). No endpoint']
   created_at    timestamptz [not null, default: `now()`]

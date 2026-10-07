@@ -15,7 +15,7 @@ Data model: [`erd.dbml`](erd.dbml). 18 endpoints.
 | Money | `priceCents`: **always an integer in cents of the local currency**, no currency code. `$1.800,00` → `180000`. Min `100` ($1). The frontend divides by 100 only to display. |
 | Pickup times | `"HH:mm"` 24h, **local time of the meetup city**, no timezone. |
 | System timestamps | ISO 8601 UTC: `"2026-10-07T15:04:05.000Z"`. |
-| Enums | UPPER_SNAKE, same values as the DB. |
+| Enums | UPPER_SNAKE, same values as the DB. Spanish/display labels live only in the frontend. `city`: `COCHABAMBA_BO`, `AREQUIPA_PE`, `SAN_SALVADOR_SV`, `UTAH_US` ("Cochabamba, BO"…). |
 | Photos | The API never returns `storageKey` outside the upload flow; responses carry a ready-to-use `url`. |
 | Phone | `phoneE164` appears to the user themself (`/me`, auth), as `seller.phoneE164` on the listing detail for logged-in users, and to the other party inside a reservation. |
 | Pagination | Only the feed: `?limit=20&cursor=<opaque>` → `{ "data": [...], "nextCursor": "..." \| null }`. `limit` 1–50. Other lists return plain arrays (a user has few items). |
@@ -73,7 +73,7 @@ The generic `code` is used only when no domain code applies. Endpoints answer wi
   "id": "0192…",
   "fullName": "Laura Gómez",
   "avatarUrl": null,
-  "city": "Roma Norte, CDMX",
+  "city": "COCHABAMBA_BO",
   "isVerified": true,
   "rating": { "average": 4.9, "count": 63 }
 }
@@ -104,7 +104,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
   "category": { "id": "0192…", "name": "Muebles", "slug": "muebles" },
   "status": "ACTIVE",
   "coverPhotoUrl": "https://…",
-  "city": "Roma Norte, CDMX",
+  "city": "COCHABAMBA_BO",
   "sellerIsVerified": true,
   "publishedAt": "2026-10-07T15:04:05.000Z"
 }
@@ -154,7 +154,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
   "email": "laura@example.com",
   "fullName": "Laura Gómez",
   "phoneE164": "+525512345678",
-  "city": "Roma Norte, CDMX",
+  "city": "COCHABAMBA_BO",
   "avatarUrl": null,
   "isVerified": false
 }
@@ -171,7 +171,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
   "password": "min 8 chars",
   "fullName": "Laura Gómez",
   "phoneE164": "+525512345678",
-  "city": "Roma Norte, CDMX"
+  "city": "COCHABAMBA_BO"
 }
 ```
 | Field | Rule |
@@ -180,7 +180,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
 | `password` | 8–72 chars. |
 | `fullName` | 2–120 chars. |
 | `phoneE164` | **required**, `^\+[1-9]\d{7,14}$`. |
-| `city` | 2–100 chars. |
+| `city` | **required**, one of `COCHABAMBA_BO`, `AREQUIPA_PE`, `SAN_SALVADOR_SV`, `UTAH_US`. |
 
 `201 Created` → same body as login.
 Errors: `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`.

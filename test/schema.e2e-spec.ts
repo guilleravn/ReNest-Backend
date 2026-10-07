@@ -17,7 +17,7 @@ describe('Database schema (e2e)', () => {
         passwordHash: 'hash',
         fullName: 'Laura Gómez',
         phoneE164: '+525512345678',
-        city: 'Roma Norte, CDMX',
+        city: 'COCHABAMBA_BO',
       },
     });
     const category = await prisma.category.upsert({
@@ -56,7 +56,7 @@ describe('Database schema (e2e)', () => {
         passwordHash: 'hash',
         fullName: 'Andrés Pérez',
         phoneE164: '+525598765432',
-        city: 'Condesa, CDMX',
+        city: 'AREQUIPA_PE',
       },
     });
   }

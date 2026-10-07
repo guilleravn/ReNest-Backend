@@ -61,7 +61,7 @@ Buyer side (independent of the listing): `Agendados` → `Completados` **only** 
 
 | ID | Rule | Tag |
 |---|---|---|
-| AUTH-1 | Sign-up: email, password, full name, **phone (required)** and zone/city (free text, e.g. "Roma Norte, CDMX"). | ➕ |
+| AUTH-1 | Sign-up: email, password, full name, **phone (required)** and city, picked from a fixed list: Cochabamba (BO), Arequipa (PE), San Salvador (SV), Utah (US). Stored as an enum (`COCHABAMBA_BO`…); the labels live in the frontend. | ➕ |
 | AUTH-2 | Email is unique and case-insensitive (`Ana@x.com` = `ana@x.com`). | ➕ |
 | AUTH-3 | Password: 8–72 characters. | ➕ |
 | AUTH-4 | Phone in international format (`+52…`, `+57…`, `+591…`), because it's used to build the WhatsApp link. | ➕ |
