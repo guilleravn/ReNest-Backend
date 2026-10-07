@@ -36,7 +36,7 @@ Every rule has an ID (`BRW-3`, `RES-2`…) so tickets can reference it. The tag 
 | ID | Rule | Tag |
 |---|---|---|
 | GEN-1 | One account can be both buyer and seller. There's no role field: the role depends on the transaction (you're the seller on your listings, the buyer on your reservations). | ✅ |
-| GEN-2 | **Prices** are stored as integers **in cents** of the local currency. There's no currency field: buyer and seller meet in person in the same city, so "$" is always the local currency. Minimum $1 (100 cents), maximum 20,000,000 (2,000,000,000 cents). | ➕ |
+| GEN-2 | **Prices** are stored as integers **in cents**. There is no currency field and no conversion: the app always shows "$" as a generic price sign, whatever the city or country (Bs, soles, dollars…). Buyer and seller settle the actual money in person. Minimum $1 (100 cents), maximum 20,000,000 (2,000,000,000 cents). | ➕ |
 | GEN-3 | **Pickup times** are the local time of the meetup city. No timezones. | ➕ |
 | GEN-4 | System dates (created, reserved, confirmed…) are stored in UTC. | ➕ |
 | GEN-5 | Browsing is public: feed, search and listing detail work without logging in. Any action (publish, reserve, confirm, rate) requires login. | ➕ |

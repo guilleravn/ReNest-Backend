@@ -12,7 +12,7 @@ Data model: [`erd.dbml`](erd.dbml). 18 endpoints.
 | Format | JSON, `Content-Type: application/json` (except the photo upload: `multipart/form-data`). Fields are **camelCase** (DB stays snake_case; Prisma `@map`). |
 | IDs | UUID v7 strings. |
 | Auth | `Authorization: Bearer <accessToken>`. Single JWT, no refresh token. 🔓 = public; everything else → `401` without a valid token. |
-| Money | `priceCents`: **always an integer in cents of the local currency**, no currency code. `$1.800,00` → `180000`. Min `100` ($1). The frontend divides by 100 only to display. |
+| Money | `priceCents`: **always an integer in cents**, no currency code. The frontend always shows "$" as a generic price sign, for every city (GEN-2). `$1.800,00` → `180000`. Min `100` ($1). The frontend divides by 100 only to display. |
 | Pickup times | `"HH:mm"` 24h, **local time of the meetup city**, no timezone. |
 | System timestamps | ISO 8601 UTC: `"2026-10-07T15:04:05.000Z"`. |
 | Enums | UPPER_SNAKE, same values as the DB. Spanish/display labels live only in the frontend. `city`: `COCHABAMBA_BO`, `AREQUIPA_PE`, `SAN_SALVADOR_SV`, `UTAH_US` ("Cochabamba, BO"…). |

@@ -7,7 +7,7 @@
 // - Prisma does not generate CHECK constraints: every "CHECK (...)" below is added by hand in the
 //   migration SQL (prisma migrate dev --create-only). Initial ones: prisma/migrations/*_init.
 // - onDelete is Restrict unless the ref says otherwise.
-// - Money: integer cents of the local currency, no currency column (buyer and seller meet in the same city).
+// - Money: integer cents, no currency column. The app always shows "$" as a generic price sign, for every city (GEN-2).
 // - Pickup times: local wall-clock time of the meetup city, no timezone. System timestamps are timestamptz.
 
 Enum listing_condition {
