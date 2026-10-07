@@ -31,17 +31,37 @@ Data model: [`erd.dbml`](erd.dbml). 18 endpoints.
 }
 ```
 
+- Every error has this shape, including unknown routes and unexpected failures.
 - The frontend switches on `code` (stable). `message` is for humans and may change.
-- `400 VALIDATION_ERROR` puts per-field problems in `details`: `[{ "field": "pickupOptions[0].weekdays", "message": "…" }]`.
+- `details` is `null` except on `400 VALIDATION_ERROR`, which lists per-field problems: `[{ "field": "pickupOptions[0].weekdays", "message": "…" }]`. Nested fields use dots and array indexes.
+- Unexpected errors are `500 INTERNAL_ERROR` with a generic message; the real error is only logged.
 
-| Status | When |
-|---|---|
-| `400` | DTO validation failed. |
-| `401` | Missing/invalid/expired token, or wrong credentials. |
-| `403` | Authenticated but wrong role on a resource you can see (e.g. editing someone else's listing). |
-| `404` | Does not exist **or** the caller must not know it exists (other people's reservations). |
-| `409` | Valid request that conflicts with the current state. |
-| `422` | Input refers to something invalid (pickup option from another listing, photo not yours…). |
+| Status | When | Generic `code` |
+|---|---|---|
+| `400` | DTO validation failed, or malformed JSON. | `VALIDATION_ERROR` |
+| `401` | Missing/invalid/expired token, or wrong credentials. | `UNAUTHORIZED` |
+| `403` | Authenticated but wrong role on a resource you can see (e.g. editing someone else's listing). | `FORBIDDEN` |
+| `404` | Does not exist **or** the caller must not know it exists (other people's reservations). Also unknown routes. | `NOT_FOUND` |
+| `409` | Valid request that conflicts with the current state. | `CONFLICT` |
+| `422` | Input refers to something invalid (pickup option from another listing, photo not yours…). | `UNPROCESSABLE_ENTITY` |
+| `500` | Unexpected failure. | `INTERNAL_ERROR` |
+| `503` | A dependency is down (`GET /health` when the database is unreachable). | `SERVICE_UNAVAILABLE` |
+
+The generic `code` is used only when no domain code applies. Endpoints answer with the domain codes listed in their own section (§3–§6).
+
+### 1.2 Conflicts (`409`)
+
+| Case | Rule | Endpoint | `code` |
+|---|---|---|---|
+| Two buyers reserve the same item at the same time; the loser gets this. | RES-5 | `POST /reservations` | `LISTING_NOT_AVAILABLE` |
+| Seller confirms the handover twice. | SAL-4 | `POST /reservations/:id/handover` | `HANDOVER_ALREADY_CONFIRMED` |
+| Buyer confirms reception twice. | PUR-7 | `POST /reservations/:id/reception` | `RECEPTION_ALREADY_CONFIRMED` |
+| Buyer rates twice. | PUR-8 | `POST /reservations/:id/rating` | `ALREADY_RATED` |
+| Buyer rates before confirming reception. | PUR-8 | `POST /reservations/:id/rating` | `RECEPTION_NOT_CONFIRMED` |
+| Adding a 4th pickup option. | SAL-6 | `POST /listings/:id/pickup-options` | `PICKUP_OPTION_LIMIT` |
+| Removing the last pickup option. | SAL-6 | `DELETE /listings/:id/pickup-options/:pickupOptionId` | `LAST_PICKUP_OPTION` |
+| Editing a listing (details or pickup options) that is Pending or Completed. | C3, LST-11 | `PATCH /listings/:id`, pickup-option endpoints | `LISTING_NOT_EDITABLE` |
+| Signing up with an email already in use (any letter case). | AUTH-2 | `POST /auth/register` | `EMAIL_TAKEN` |
 
 ---
 
@@ -431,9 +451,11 @@ Errors: `400 VALIDATION_ERROR`, `403 NOT_RESERVATION_BUYER`, `404 RESERVATION_NO
 
 ## 8. Error codes
 
-`VALIDATION_ERROR`, `INVALID_FILE`, `INVALID_CREDENTIALS`, `EMAIL_TAKEN`, `LISTING_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `INVALID_PHOTO_KEY`, `NOT_LISTING_OWNER`, `LISTING_NOT_EDITABLE`, `PICKUP_OPTION_NOT_FOUND`, `PICKUP_OPTION_LIMIT`, `LAST_PICKUP_OPTION`, `CANNOT_RESERVE_OWN_LISTING`, `INVALID_PICKUP_OPTION`, `LISTING_NOT_AVAILABLE`, `RESERVATION_NOT_FOUND`, `NOT_RESERVATION_SELLER`, `NOT_RESERVATION_BUYER`, `HANDOVER_ALREADY_CONFIRMED`, `RECEPTION_ALREADY_CONFIRMED`, `RECEPTION_NOT_CONFIRMED`, `ALREADY_RATED`.
+**Generic** (one per status, see §1.1): `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `UNPROCESSABLE_ENTITY`, `HTTP_ERROR` (any other 4xx), `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR`.
 
-Keep them in one shared enum used by backend and frontend.
+**Domain:** `INVALID_FILE`, `INVALID_CREDENTIALS`, `EMAIL_TAKEN`, `LISTING_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `INVALID_PHOTO_KEY`, `NOT_LISTING_OWNER`, `LISTING_NOT_EDITABLE`, `PICKUP_OPTION_NOT_FOUND`, `PICKUP_OPTION_LIMIT`, `LAST_PICKUP_OPTION`, `CANNOT_RESERVE_OWN_LISTING`, `INVALID_PICKUP_OPTION`, `LISTING_NOT_AVAILABLE`, `RESERVATION_NOT_FOUND`, `NOT_RESERVATION_SELLER`, `NOT_RESERVATION_BUYER`, `HANDOVER_ALREADY_CONFIRMED`, `RECEPTION_ALREADY_CONFIRMED`, `RECEPTION_NOT_CONFIRMED`, `ALREADY_RATED`.
+
+Backend source: `src/common/errors/error-code.ts`. Keep the frontend copy in sync.
 
 ## 9. Out of scope for R1
 
