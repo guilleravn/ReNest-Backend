@@ -7,6 +7,8 @@ interface ListingOverrides {
   status?: ListingStatus;
   photoCount?: number;
   title?: string;
+  publishedAt?: Date;
+  category?: { name: string; slug: string };
 }
 
 /** A listing of `sellerId` with `photoCount` photos and two pickup options. */
@@ -17,12 +19,14 @@ export async function createListing(
     status = 'ACTIVE',
     photoCount = 1,
     title = 'Silla de comedor en roble',
+    publishedAt,
+    category: { name, slug } = { name: 'Muebles', slug: 'muebles' },
   }: ListingOverrides = {},
 ) {
   const category = await prisma.category.upsert({
-    where: { slug: 'muebles' },
+    where: { slug },
     update: {},
-    create: { name: 'Muebles', slug: 'muebles' },
+    create: { name, slug },
   });
   return prisma.listing.create({
     data: {
@@ -33,6 +37,7 @@ export async function createListing(
       condition: 'GENTLY_USED',
       priceCents: 18000000,
       status,
+      publishedAt,
       photos: {
         // Created in reverse so tests can check the response sorts them.
         create: Array.from({ length: photoCount }, (_, i) => ({

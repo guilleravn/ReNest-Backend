@@ -1,16 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { CategoryDto } from '../../categories/dto/category.dto.js';
 import {
   City,
   ListingCondition,
   ListingStatus,
   Weekday,
 } from '../../generated/prisma/enums.js';
-
-export class CategoryDto {
-  @ApiProperty() id!: string;
-  @ApiProperty({ example: 'Muebles' }) name!: string;
-  @ApiProperty({ example: 'muebles' }) slug!: string;
-}
 
 export class PhotoDto {
   @ApiProperty() id!: string;
