@@ -85,7 +85,8 @@ Daily use:
 
 - Fullstack work: run `claude --add-dir ../ReNest-Frontend` from this repo.
 - `/ticket REN-xx` runs the team workflow: plan (with your approval), branch, tests first, small commits, self-review, PRs.
-- One ticket per session. Run `/clear` before starting the next one.
+- `/review REN-xx` reviews the ticket's PRs in both repos against the AC, rules, contract and conventions. It reports verified findings and posts them to GitHub only with your approval. It never approves or merges.
+- One ticket or review per session. Run `/clear` before starting the next one.
 
 What's configured, and where:
 
@@ -94,6 +95,7 @@ What's configured, and where:
 | `CLAUDE.md` | Commands, architecture, conventions, git workflow | Every session |
 | `.claude/rules/testing.md` | Testing standards | Only when test files are touched |
 | `.claude/skills/ticket/` | `/ticket` workflow | Only when invoked |
+| `.claude/skills/review/` | `/review` workflow | Only when invoked |
 | `.claude/settings.json` | Shared permissions | Every session |
 | `.mcp.json` | Linear MCP server | Every session |
 
