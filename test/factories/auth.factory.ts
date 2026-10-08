@@ -8,7 +8,7 @@ export function registerPayload(
     email: 'laura@example.com',
     password: 'correct-horse',
     fullName: 'Laura Gómez',
-    phoneE164: '+525512345678',
+    phoneE164: '+59171234567',
     city: 'COCHABAMBA_BO',
     ...overrides,
   } as Record<string, string>;

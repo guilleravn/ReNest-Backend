@@ -178,18 +178,52 @@ describe('Auth (e2e)', () => {
       expect(await prisma.user.count()).toBe(0);
     });
 
-    it('returns 400 VALIDATION_ERROR when the phone is not E.164 (AUTH-4)', async () => {
-      const res = await request(server())
-        .post('/api/v1/auth/register')
-        .send(registerPayload({ phoneE164: '5512345678' }))
-        .expect(400);
+    it.each([
+      ['Bolivia', '+59171234567'],
+      ['Peru', '+51912345678'],
+      ['El Salvador', '+50371234567'],
+      ['the United States', '+13852345678'],
+    ])(
+      'creates the account with a valid %s phone (AUTH-4)',
+      async (_country, phoneE164) => {
+        const res = await request(server())
+          .post('/api/v1/auth/register')
+          .send(registerPayload({ phoneE164 }))
+          .expect(201);
 
-      expect(res.body.code).toBe('VALIDATION_ERROR');
-      expect(res.body.details).toEqual([
-        { field: 'phoneE164', message: expect.any(String) },
-      ]);
-      expect(await prisma.user.count()).toBe(0);
-    });
+        expect(res.body.user.phoneE164).toBe(phoneE164);
+        expect(await prisma.user.count()).toBe(1);
+      },
+    );
+
+    it.each([
+      ['has no + prefix', '59171234567'],
+      ['has a country code we do not support', '+525512345678'],
+      ['is too short for Bolivia', '+5917123456'],
+      ['is too long for Bolivia', '+591712345678'],
+      ['is not a mobile number in Bolivia', '+59121234567'],
+      ['is too short for Peru', '+5191234567'],
+      ['is not a mobile number in Peru', '+51812345678'],
+      ['is too long for El Salvador', '+503712345678'],
+      ['is too short for the United States', '+1385234567'],
+      ['has an invalid area code in the United States', '+11385234567'],
+      ['contains non-digit characters', '+591712345ab'],
+      ['contains spaces', '+591 71234567'],
+    ])(
+      'returns 400 VALIDATION_ERROR when the phone %s (AUTH-4)',
+      async (_case, phoneE164) => {
+        const res = await request(server())
+          .post('/api/v1/auth/register')
+          .send(registerPayload({ phoneE164 }))
+          .expect(400);
+
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details).toEqual([
+          { field: 'phoneE164', message: expect.any(String) },
+        ]);
+        expect(await prisma.user.count()).toBe(0);
+      },
+    );
 
     it('returns 400 VALIDATION_ERROR when the city is not in the fixed list (AUTH-1)', async () => {
       const res = await request(server())

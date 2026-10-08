@@ -5,11 +5,25 @@ import {
   IsEnum,
   IsString,
   Length,
-  Matches,
   MaxLength,
+  Validate,
+  ValidatorConstraint,
+  type ValidatorConstraintInterface,
 } from 'class-validator';
 import { City } from '../../generated/prisma/enums.js';
 import { normalizeEmail } from './normalize-email.js';
+import { isSupportedPhone, PHONE_FORMAT_MESSAGE } from '../phone-countries.js';
+
+@ValidatorConstraint({ name: 'supportedPhone' })
+class SupportedPhoneConstraint implements ValidatorConstraintInterface {
+  validate(value: unknown): boolean {
+    return isSupportedPhone(value);
+  }
+
+  defaultMessage(): string {
+    return PHONE_FORMAT_MESSAGE;
+  }
+}
 
 export class RegisterDto {
   @ApiProperty({ example: 'laura@example.com', maxLength: 255 })
@@ -28,11 +42,13 @@ export class RegisterDto {
   @Length(2, 120)
   fullName!: string;
 
-  @ApiProperty({ example: '+525512345678', pattern: '^\\+[1-9]\\d{7,14}$' })
-  @IsString()
-  @Matches(/^\+[1-9]\d{7,14}$/, {
-    message: 'phoneE164 must be in E.164 format, e.g. +525512345678',
+  @ApiProperty({
+    example: '+59171234567',
+    description:
+      'Mobile number in E.164 for BO (+591, 8 digits), PE (+51, 9), SV (+503, 8) or US (+1, 10)',
   })
+  @IsString()
+  @Validate(SupportedPhoneConstraint)
   phoneE164!: string;
 
   @ApiProperty({ enum: City, enumName: 'City' })

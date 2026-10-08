@@ -40,7 +40,7 @@ describe('GET /listings/:listingId (BRW-5..9, GEN-7)', () => {
     signUp(server(), {
       email: 'laura@example.com',
       fullName: 'Laura Gómez',
-      phoneE164: '+525512345678',
+      phoneE164: '+59171234567',
       city: 'COCHABAMBA_BO',
     });
 
@@ -48,7 +48,7 @@ describe('GET /listings/:listingId (BRW-5..9, GEN-7)', () => {
     signUp(server(), {
       email: `buyer${n}@example.com`,
       fullName: `Andrés Pérez ${n}`,
-      phoneE164: `+52559876543${n}`,
+      phoneE164: `+5198765432${n}`,
       city: 'AREQUIPA_PE',
     });
 
@@ -160,7 +160,7 @@ describe('GET /listings/:listingId (BRW-5..9, GEN-7)', () => {
 
     const res = await getDetail(listing.id, token).expect(200);
 
-    expect(res.body.seller.phoneE164).toBe('+525512345678');
+    expect(res.body.seller.phoneE164).toBe('+59171234567');
   });
 
   it("never returns the seller's phone to an anonymous visitor (GEN-7)", async () => {
@@ -170,7 +170,7 @@ describe('GET /listings/:listingId (BRW-5..9, GEN-7)', () => {
     const res = await getDetail(listing.id).expect(200);
 
     expect(res.body.seller.phoneE164).toBeNull();
-    expect(JSON.stringify(res.body)).not.toContain('+525512345678');
+    expect(JSON.stringify(res.body)).not.toContain('+59171234567');
   });
 
   it('treats an invalid token as anonymous and hides the phone (GEN-7)', async () => {
