@@ -23,6 +23,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { ConfirmReceptionDto } from './dto/confirm-reception.dto.js';
 import { CreateReservationDto } from './dto/create-reservation.dto.js';
 import { ReservationDetailDto } from './dto/reservation-detail.dto.js';
 import { ReservationsService } from './reservations.service.js';
@@ -91,5 +92,28 @@ export class ReservationsController {
     @CurrentUser() userId: string,
   ): Promise<ReservationDetailDto> {
     return this.reservations.confirmHandover(reservationId, userId);
+  }
+
+  @Post(':reservationId/reception')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Buyer confirms reception with the checklist',
+    description:
+      'Sets the reception date and saves the checklist; completes the purchase. Works before or after the handover. Can be done once and cannot be changed.',
+  })
+  @ApiOkResponse({ type: ReservationDetailDto })
+  @ApiBadRequestResponse({ description: 'VALIDATION_ERROR' })
+  @ApiUnauthorizedResponse({ description: 'UNAUTHORIZED' })
+  @ApiForbiddenResponse({ description: 'NOT_RESERVATION_BUYER' })
+  @ApiNotFoundResponse({ description: 'RESERVATION_NOT_FOUND' })
+  @ApiConflictResponse({ description: 'RECEPTION_ALREADY_CONFIRMED' })
+  confirmReception(
+    @Param('reservationId') reservationId: string,
+    @CurrentUser() userId: string,
+    @Body() dto: ConfirmReceptionDto,
+  ): Promise<ReservationDetailDto> {
+    return this.reservations.confirmReception(reservationId, userId, dto);
   }
 }

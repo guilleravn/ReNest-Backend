@@ -10,6 +10,7 @@ import {
 import { toPickupOption } from '../listings/listing-format.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
+import type { ConfirmReceptionDto } from './dto/confirm-reception.dto.js';
 import type { CreateReservationDto } from './dto/create-reservation.dto.js';
 import type { PurchaseDto } from './dto/purchase.dto.js';
 import type { PurchaseStatus } from './dto/purchases-query.dto.js';
@@ -247,6 +248,70 @@ export class ReservationsService {
         data: { status: 'COMPLETED' },
       });
       if (completed.count === 0) throw alreadyConfirmed();
+    });
+
+    return this.getDetail(reservationId, viewerId);
+  }
+
+  // Only matches while reception is unset, so a second or concurrent
+  // confirmation changes nothing and gets a 409. The seller's side and the
+  // listing are left untouched.
+  async confirmReception(
+    reservationId: string,
+    viewerId: string,
+    {
+      matchesListing,
+      worksNoUndisclosedDamage,
+      allPartsIncluded,
+      issueReport,
+    }: ConfirmReceptionDto,
+  ): Promise<ReservationDetailDto> {
+    const reservation = isUUID(reservationId)
+      ? await this.prisma.reservation.findUnique({
+          where: { id: reservationId },
+          select: { buyerId: true, listing: { select: { sellerId: true } } },
+        })
+      : null;
+    const isBuyer = reservation?.buyerId === viewerId;
+    if (
+      !reservation ||
+      (!isBuyer && reservation.listing.sellerId !== viewerId)
+    ) {
+      throw new AppException(
+        HttpStatus.NOT_FOUND,
+        ErrorCode.RESERVATION_NOT_FOUND,
+        'Reservation not found.',
+      );
+    }
+    if (!isBuyer) {
+      throw new AppException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.NOT_RESERVATION_BUYER,
+        'Only the buyer can confirm the reception.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const received = await tx.reservation.updateMany({
+        where: { id: reservationId, buyerReceivedAt: null },
+        data: { buyerReceivedAt: new Date() },
+      });
+      if (received.count === 0) {
+        throw new AppException(
+          HttpStatus.CONFLICT,
+          ErrorCode.RECEPTION_ALREADY_CONFIRMED,
+          'The reception was already confirmed.',
+        );
+      }
+      await tx.receptionChecklist.create({
+        data: {
+          reservationId,
+          matchesListing,
+          worksNoUndisclosedDamage,
+          allPartsIncluded,
+          issueReport: issueReport ?? null,
+        },
+      });
     });
 
     return this.getDetail(reservationId, viewerId);
