@@ -99,7 +99,7 @@ Table listing_photos {
   updated_at  timestamptz [not null, default: `now()`]
 
   indexes {
-    (listing_id, position) [unique, note: 'Editing photos replaces the whole set in one transaction: DELETE the listing rows, then INSERT the new order (kept photos are re-inserted with their same storage_key). Avoids position collisions. Replaced photos stay in S3/R2 (no cleanup in R1)']
+    (listing_id, position) [unique, note: 'Editing photos replaces the whole set in one transaction: DELETE the listing rows, then INSERT the new order (kept photos are re-inserted with their same storage_key). Avoids position collisions. Replaced photos stay in the bucket (no cleanup in R1)']
   }
 }
 
