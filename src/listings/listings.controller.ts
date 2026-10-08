@@ -1,5 +1,6 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -8,6 +9,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { OptionalJwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { FeedQueryDto } from './dto/feed-query.dto.js';
 import { FeedPageDto } from './dto/listing-card.dto.js';
 import { ListingDetailDto } from './dto/listing-detail.dto.js';
 import { ListingsService } from './listings.service.js';
@@ -20,11 +22,13 @@ export class ListingsController {
   @Get()
   @ApiOperation({
     summary: 'Feed',
-    description: 'Public. Active listings only, newest first.',
+    description:
+      'Public. Active listings only, newest first, paginated by cursor. A malformed cursor is 400 VALIDATION_ERROR.',
   })
   @ApiOkResponse({ type: FeedPageDto })
-  getFeed(): Promise<FeedPageDto> {
-    return this.listings.getFeed();
+  @ApiBadRequestResponse({ description: 'VALIDATION_ERROR' })
+  getFeed(@Query() query: FeedQueryDto): Promise<FeedPageDto> {
+    return this.listings.getFeed(query);
   }
 
   @Get(':listingId')
