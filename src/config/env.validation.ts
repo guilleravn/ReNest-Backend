@@ -51,6 +51,9 @@ const envSchema = z
     AUTH_LOGIN_WINDOW: durationInSeconds.prefault('1m'),
     AUTH_REGISTER_LIMIT: z.coerce.number().int().positive().default(10),
     AUTH_REGISTER_WINDOW: durationInSeconds.prefault('1h'),
+    // Reverse proxies in front of the API whose X-Forwarded-For is trusted.
+    // Defaults to 1 in production (Railway) and 0 elsewhere.
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).optional(),
     CORS_ORIGIN: originList.optional(),
   })
   .refine((env) => env.NODE_ENV !== 'production' || env.CORS_ORIGIN?.length, {

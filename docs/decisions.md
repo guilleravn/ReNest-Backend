@@ -89,4 +89,4 @@ Short record of the technical and process decisions behind the MVP. Add an entry
   - It adds no infrastructure (no Redis) to a demo-scale deployment.
 - **Consequences:**
   - Counters reset when the process restarts, and are not shared if we ever run more than one instance. Then we would move to a shared store such as Redis.
-  - Pending before relying on it in the deployed environment: behind the Railway proxy every request looks like it comes from the proxy's IP, so all users would share one counter. Set `trust proxy` on the Express app so `req.ip` comes from `X-Forwarded-For`, and check the proxy hop count so clients cannot spoof the header.
+  - Behind the Railway proxy every request would look like it comes from the proxy's IP, so all users would share one counter. The app sets Express `trust proxy` to `TRUST_PROXY_HOPS` (default 1 in production, 0 elsewhere), so `req.ip` comes from the last hop's `X-Forwarded-For` entry and clients cannot spoof it.
