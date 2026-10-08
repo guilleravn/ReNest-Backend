@@ -33,6 +33,7 @@ export const ErrorCode = {
   RECEPTION_ALREADY_CONFIRMED: 'RECEPTION_ALREADY_CONFIRMED',
   RECEPTION_NOT_CONFIRMED: 'RECEPTION_NOT_CONFIRMED',
   ALREADY_RATED: 'ALREADY_RATED',
+  RATE_LIMITED: 'RATE_LIMITED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

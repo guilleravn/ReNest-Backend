@@ -35,6 +35,9 @@ export default defineConfig({
       NODE_ENV: 'test',
       DATABASE_URL: testDatabaseUrl,
       S3_BUCKET: testBucket,
+      // Out of the way for the other specs; auth-rate-limit.e2e-spec.ts lowers them.
+      AUTH_LOGIN_LIMIT: '10000',
+      AUTH_REGISTER_LIMIT: '10000',
     },
   },
 });
