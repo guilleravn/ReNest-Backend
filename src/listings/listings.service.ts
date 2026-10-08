@@ -50,28 +50,13 @@ export class ListingsService {
       ...(afterId && { cursor: { id: afterId } }),
       orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
-      include: {
-        category: { select: { id: true, name: true, slug: true } },
-        photos: { orderBy: { position: 'asc' }, take: 1 },
-        seller: { select: { city: true, isVerified: true } },
-      },
+      include: LISTING_CARD_INCLUDE,
     });
     const hasMore = page.length > limit;
     const listings = hasMore ? page.slice(0, limit) : page;
 
     const data = await Promise.all(
-      listings.map(async (listing) => ({
-        id: listing.id,
-        title: listing.title,
-        priceCents: listing.priceCents,
-        condition: listing.condition,
-        category: listing.category,
-        status: listing.status,
-        coverPhotoUrl: await this.storage.getUrl(listing.photos[0].storageKey),
-        city: listing.seller.city,
-        sellerIsVerified: listing.seller.isVerified,
-        publishedAt: listing.publishedAt,
-      })),
+      listings.map((listing) => toListingCard(listing, this.storage)),
     );
     return {
       data,
