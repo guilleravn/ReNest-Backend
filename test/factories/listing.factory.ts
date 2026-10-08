@@ -96,6 +96,7 @@ export async function rateSeller(
 interface ReservationOverrides {
   reservedAt?: Date;
   sellerHandedOverAt?: Date | null;
+  buyerReceivedAt?: Date | null;
 }
 
 /** A reservation by `buyerId` of `listing` on its first pickup option. */
@@ -103,7 +104,11 @@ export async function reserveListing(
   prisma: PrismaService,
   listing: Awaited<ReturnType<typeof createListing>>,
   buyerId: string,
-  { reservedAt, sellerHandedOverAt = null }: ReservationOverrides = {},
+  {
+    reservedAt,
+    sellerHandedOverAt = null,
+    buyerReceivedAt = null,
+  }: ReservationOverrides = {},
 ) {
   return prisma.reservation.create({
     data: {
@@ -112,6 +117,7 @@ export async function reserveListing(
       buyerId,
       reservedAt,
       sellerHandedOverAt,
+      buyerReceivedAt,
     },
   });
 }

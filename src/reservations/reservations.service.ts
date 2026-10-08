@@ -11,6 +11,8 @@ import { toPickupOption } from '../listings/listing-format.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import type { CreateReservationDto } from './dto/create-reservation.dto.js';
+import type { PurchaseDto } from './dto/purchase.dto.js';
+import type { PurchaseStatus } from './dto/purchases-query.dto.js';
 import type { ReservationDetailDto } from './dto/reservation-detail.dto.js';
 import { reservationActions } from './reservation-actions.js';
 
@@ -97,6 +99,36 @@ export class ReservationsService {
       });
 
     return this.getDetail(id, buyerId);
+  }
+
+  // COMPLETED = the buyer confirmed reception; the seller's handover alone
+  // keeps a purchase in progress (PUR-2).
+  async listPurchases(
+    buyerId: string,
+    status: PurchaseStatus,
+  ): Promise<PurchaseDto[]> {
+    const reservations = await this.prisma.reservation.findMany({
+      where: {
+        buyerId,
+        buyerReceivedAt: status === 'COMPLETED' ? { not: null } : null,
+      },
+      orderBy: [{ reservedAt: 'desc' }, { id: 'desc' }],
+      include: {
+        pickupOption: true,
+        listing: { include: LISTING_CARD_INCLUDE },
+      },
+    });
+
+    return Promise.all(
+      reservations.map(async (reservation) => ({
+        id: reservation.id,
+        reservedAt: reservation.reservedAt,
+        sellerHandedOverAt: reservation.sellerHandedOverAt,
+        buyerReceivedAt: reservation.buyerReceivedAt,
+        listing: await toListingCard(reservation.listing, this.storage),
+        pickupOption: toPickupOption(reservation.pickupOption),
+      })),
+    );
   }
 
   // Only the buyer and the seller may see a reservation; anyone else gets a
