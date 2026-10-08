@@ -36,6 +36,25 @@ npm run start:dev
 - Swagger: `http://localhost:3000/docs`
 - API routes live under `/api/v1`.
 
+## Deployment
+
+| Piece | URL |
+|---|---|
+| API (Railway) | https://renest-backend-production.up.railway.app (health: `/health`, Swagger: `/docs`) |
+| Frontend (Vercel) | https://re-nest-frontend.vercel.app |
+
+Variables to set in the Railway service (see `.env.example`):
+
+| Variable | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `DATABASE_URL` | The Railway Postgres connection string. |
+| `JWT_SECRET` | A long random string (16+ characters). |
+| `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | The Railway Bucket's values. `S3_FORCE_PATH_STYLE` stays `false`. |
+| `CORS_ORIGIN` | `https://re-nest-frontend.vercel.app`: the only origin allowed. Without trailing slash. Separate several origins with commas. The API refuses to start in production without it. |
+
+Migrations run before each deploy (`railway.json`). To load the demo data into the deployed database, run it from your machine against the database's public URL: `DATABASE_URL=$DATABASE_PUBLIC_URL railway run npm run seed`. Without the override, `DATABASE_URL` points at the private network (`*.railway.internal`), which a laptop cannot reach. See D-11 in [decisions](docs/decisions.md).
+
 ## Scripts
 
 | Script | What it does |
