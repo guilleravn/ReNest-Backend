@@ -40,7 +40,7 @@ npm run start:dev
 | Script | What it does |
 |---|---|
 | `npm run start:dev` | Runs the API in watch mode. |
-| `npm run db:up` / `db:down` | Starts or stops Postgres in Docker. |
+| `npm run db:up` / `db:down` | Starts or stops Postgres and the local S3 storage (RustFS, console on `http://localhost:9001`) in Docker. |
 | `npm run db:migrate` | Creates and applies a migration (`-- --name <change>`). |
 | `npm run db:studio` | Opens a browser for the database. |
 | `npm run lint` | Runs oxlint (type-aware) over `src/` and `test/`. |

@@ -13,6 +13,15 @@ if (testDatabaseUrl === process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL_TEST must differ from DATABASE_URL.');
 }
 
+// Same for photo storage: a bucket of their own.
+const testBucket = process.env.S3_BUCKET_TEST;
+if (!testBucket) {
+  throw new Error('S3_BUCKET_TEST is not set (see .env.example).');
+}
+if (testBucket === process.env.S3_BUCKET) {
+  throw new Error('S3_BUCKET_TEST must differ from S3_BUCKET.');
+}
+
 export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
@@ -25,6 +34,7 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
       DATABASE_URL: testDatabaseUrl,
+      S3_BUCKET: testBucket,
     },
   },
 });
