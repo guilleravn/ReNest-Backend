@@ -4,6 +4,7 @@ import { AppException } from '../common/errors/app.exception.js';
 import { ErrorCode } from '../common/errors/error-code.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
+import type { Prisma } from '../generated/prisma/client.js';
 import type { ListingStatus } from '../generated/prisma/enums.js';
 import { isOwnPhotoKey } from '../storage/photo-file.js';
 import type { CreateListingDto } from './dto/create-listing.dto.js';
@@ -11,7 +12,10 @@ import type { FeedQueryDto } from './dto/feed-query.dto.js';
 import type { FeedPageDto } from './dto/listing-card.dto.js';
 import type { ListingDetailDto } from './dto/listing-detail.dto.js';
 import type { MyListingDto } from './dto/my-listings.dto.js';
-import type { UpdateListingDto } from './dto/update-listing.dto.js';
+import type {
+  PhotoInputDto,
+  UpdateListingDto,
+} from './dto/update-listing.dto.js';
 import { escapeLike } from './escape-like.js';
 import { decodeFeedCursor, encodeFeedCursor } from './feed-cursor.js';
 import { LISTING_CARD_INCLUDE, toListingCard } from './listing-card.js';
@@ -126,6 +130,10 @@ export class ListingsService {
         }
       }
 
+      if (dto.photos) {
+        await this.replacePhotos(tx, sellerId, listingId, dto.photos);
+      }
+
       // publishedAt is never written, so the listing keeps its feed position.
       await tx.listing.update({
         where: { id: listingId },
@@ -139,6 +147,52 @@ export class ListingsService {
       });
     });
     return this.getDetail(listingId, sellerId);
+  }
+
+  // The rows are recreated rather than updated, because moving a photo to a
+  // taken position would break the unique (listing, position) pair midway.
+  // Kept photos keep their id, key and creation date.
+  private async replacePhotos(
+    tx: Prisma.TransactionClient,
+    sellerId: string,
+    listingId: string,
+    photos: PhotoInputDto[],
+  ): Promise<void> {
+    const current = new Map(
+      (await tx.listingPhoto.findMany({ where: { listingId } })).map(
+        (photo) => [photo.id, photo],
+      ),
+    );
+    const invalidPhoto = () =>
+      new AppException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        ErrorCode.INVALID_PHOTO_KEY,
+        'Every photo must be one of this listing or one of your uploads.',
+      );
+
+    const rows = photos.map(({ photoId, storageKey }, position) => {
+      if (photoId !== undefined) {
+        const kept = current.get(photoId);
+        if (!kept) throw invalidPhoto();
+        const { id, storageKey: keptKey, createdAt } = kept;
+        return { id, listingId, storageKey: keptKey, createdAt, position };
+      }
+      if (!isOwnPhotoKey(sellerId, storageKey!)) throw invalidPhoto();
+      return { listingId, storageKey: storageKey!, position };
+    });
+    // The DTO compares items by photoId or storageKey, so a kept photo sent
+    // again by its key only shows up once both resolve to keys.
+    if (new Set(rows.map((row) => row.storageKey)).size < rows.length) {
+      throw new AppException(
+        HttpStatus.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR,
+        'Validation failed.',
+        [{ field: 'photos', message: 'each photo can appear only once' }],
+      );
+    }
+
+    await tx.listingPhoto.deleteMany({ where: { listingId } });
+    await tx.listingPhoto.createMany({ data: rows });
   }
 
   async getFeed({

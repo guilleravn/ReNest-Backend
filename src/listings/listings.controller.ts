@@ -102,7 +102,9 @@ export class ListingsController {
   @ApiForbiddenResponse({ description: 'NOT_LISTING_OWNER' })
   @ApiNotFoundResponse({ description: 'LISTING_NOT_FOUND' })
   @ApiConflictResponse({ description: 'LISTING_NOT_EDITABLE' })
-  @ApiUnprocessableEntityResponse({ description: 'CATEGORY_NOT_FOUND' })
+  @ApiUnprocessableEntityResponse({
+    description: 'CATEGORY_NOT_FOUND, INVALID_PHOTO_KEY',
+  })
   update(
     @Param('listingId') listingId: string,
     @CurrentUser() userId: string,
