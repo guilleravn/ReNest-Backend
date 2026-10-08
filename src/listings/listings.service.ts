@@ -11,6 +11,7 @@ import type { FeedQueryDto } from './dto/feed-query.dto.js';
 import type { FeedPageDto } from './dto/listing-card.dto.js';
 import type { ListingDetailDto } from './dto/listing-detail.dto.js';
 import type { MyListingDto } from './dto/my-listings.dto.js';
+import type { UpdateListingDto } from './dto/update-listing.dto.js';
 import { escapeLike } from './escape-like.js';
 import { decodeFeedCursor, encodeFeedCursor } from './feed-cursor.js';
 import { LISTING_CARD_INCLUDE, toListingCard } from './listing-card.js';
@@ -74,6 +75,70 @@ export class ListingsService {
       select: { id: true },
     });
     return this.getDetail(id, sellerId);
+  }
+
+  async update(
+    sellerId: string,
+    listingId: string,
+    dto: UpdateListingDto,
+  ): Promise<ListingDetailDto> {
+    await this.prisma.$transaction(async (tx) => {
+      // The row lock orders the edit against a reservation: a reservation
+      // waits for the edit to commit, and an edit that waited for a
+      // reservation then finds the listing Pending.
+      const [listing] = isUUID(listingId)
+        ? await tx.$queryRaw<{ sellerId: string; status: ListingStatus }[]>`
+            SELECT seller_id AS "sellerId", status::text AS status
+            FROM listings WHERE id = ${listingId}::uuid FOR UPDATE`
+        : [];
+      if (!listing) {
+        throw new AppException(
+          HttpStatus.NOT_FOUND,
+          ErrorCode.LISTING_NOT_FOUND,
+          'Listing not found.',
+        );
+      }
+      if (listing.sellerId !== sellerId) {
+        throw new AppException(
+          HttpStatus.FORBIDDEN,
+          ErrorCode.NOT_LISTING_OWNER,
+          'You can only edit your own listings.',
+        );
+      }
+      if (listing.status !== 'ACTIVE') {
+        throw new AppException(
+          HttpStatus.CONFLICT,
+          ErrorCode.LISTING_NOT_EDITABLE,
+          'This listing was already reserved and can no longer be edited.',
+        );
+      }
+      if (dto.categoryId !== undefined) {
+        const category = await tx.category.findUnique({
+          where: { id: dto.categoryId },
+          select: { id: true },
+        });
+        if (!category) {
+          throw new AppException(
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            ErrorCode.CATEGORY_NOT_FOUND,
+            'Category not found.',
+          );
+        }
+      }
+
+      // publishedAt is never written, so the listing keeps its feed position.
+      await tx.listing.update({
+        where: { id: listingId },
+        data: {
+          categoryId: dto.categoryId,
+          title: dto.title,
+          description: dto.description,
+          condition: dto.condition,
+          priceCents: dto.priceCents,
+        },
+      });
+    });
+    return this.getDetail(listingId, sellerId);
   }
 
   async getFeed({
