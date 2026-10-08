@@ -14,7 +14,11 @@ import type { ConfirmReceptionDto } from './dto/confirm-reception.dto.js';
 import type { CreateReservationDto } from './dto/create-reservation.dto.js';
 import type { PurchaseDto } from './dto/purchase.dto.js';
 import type { PurchaseStatus } from './dto/purchases-query.dto.js';
-import type { ReservationDetailDto } from './dto/reservation-detail.dto.js';
+import type { RateSellerDto } from './dto/rate-seller.dto.js';
+import type {
+  ReservationDetailDto,
+  ReservationRatingDto,
+} from './dto/reservation-detail.dto.js';
 import { reservationActions } from './reservation-actions.js';
 
 const listingNotAvailable = () =>
@@ -315,5 +319,69 @@ export class ReservationsService {
     });
 
     return this.getDetail(reservationId, viewerId);
+  }
+
+  // The seller comes from the listing, never from the client. The unique
+  // reservation_id makes a second or concurrent rating fail on insert, which
+  // becomes a 409.
+  async rateSeller(
+    reservationId: string,
+    viewerId: string,
+    { stars }: RateSellerDto,
+  ): Promise<ReservationRatingDto> {
+    const reservation = isUUID(reservationId)
+      ? await this.prisma.reservation.findUnique({
+          where: { id: reservationId },
+          select: {
+            buyerId: true,
+            buyerReceivedAt: true,
+            listing: { select: { sellerId: true } },
+          },
+        })
+      : null;
+    const isBuyer = reservation?.buyerId === viewerId;
+    if (
+      !reservation ||
+      (!isBuyer && reservation.listing.sellerId !== viewerId)
+    ) {
+      throw new AppException(
+        HttpStatus.NOT_FOUND,
+        ErrorCode.RESERVATION_NOT_FOUND,
+        'Reservation not found.',
+      );
+    }
+    if (!isBuyer) {
+      throw new AppException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.NOT_RESERVATION_BUYER,
+        'Only the buyer can rate the seller.',
+      );
+    }
+    if (reservation.buyerReceivedAt === null) {
+      throw new AppException(
+        HttpStatus.CONFLICT,
+        ErrorCode.RECEPTION_NOT_CONFIRMED,
+        'Confirm the reception before rating the seller.',
+      );
+    }
+
+    return this.prisma.sellerRating
+      .create({
+        data: { reservationId, sellerId: reservation.listing.sellerId, stars },
+        select: { stars: true, createdAt: true },
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new AppException(
+            HttpStatus.CONFLICT,
+            ErrorCode.ALREADY_RATED,
+            'The seller was already rated for this purchase.',
+          );
+        }
+        throw error;
+      });
   }
 }
