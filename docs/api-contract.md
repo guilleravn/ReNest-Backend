@@ -212,7 +212,7 @@ Only `status = ACTIVE`. Order: `publishedAt DESC, id DESC`.
 
 | Query | Rule |
 |---|---|
-| `q` | optional, 2–60 chars. `title ILIKE '%q%'` (`%`, `_`, `\` escaped). |
+| `q` | optional, 2–60 chars after trimming. `title ILIKE '%q%'` (`%`, `_`, `\` escaped). |
 | `category` | optional slug. Unknown slug → empty `data`. |
 | `limit`, `cursor` | §1. A malformed `cursor` → `400 VALIDATION_ERROR` (field `cursor`). A cursor stays valid after its listing leaves the feed. |
 

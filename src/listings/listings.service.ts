@@ -7,6 +7,7 @@ import { StorageService } from '../storage/storage.service.js';
 import type { FeedQueryDto } from './dto/feed-query.dto.js';
 import type { FeedPageDto } from './dto/listing-card.dto.js';
 import type { ListingDetailDto } from './dto/listing-detail.dto.js';
+import { escapeLike } from './escape-like.js';
 import { decodeFeedCursor, encodeFeedCursor } from './feed-cursor.js';
 import { sellerRating, toHhmm } from './listing-format.js';
 
@@ -17,7 +18,12 @@ export class ListingsService {
     private readonly storage: StorageService,
   ) {}
 
-  async getFeed({ limit, cursor }: FeedQueryDto): Promise<FeedPageDto> {
+  async getFeed({
+    q,
+    category,
+    limit,
+    cursor,
+  }: FeedQueryDto): Promise<FeedPageDto> {
     const afterId = cursor === undefined ? undefined : decodeFeedCursor(cursor);
     if (afterId === null) {
       throw new AppException(
@@ -34,6 +40,8 @@ export class ListingsService {
     const page = await this.prisma.listing.findMany({
       where: {
         status: 'ACTIVE',
+        ...(q && { title: { contains: escapeLike(q), mode: 'insensitive' } }),
+        ...(category && { category: { slug: category } }),
         ...(afterId && { id: { not: afterId } }),
       },
       ...(afterId && { cursor: { id: afterId } }),

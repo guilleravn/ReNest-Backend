@@ -270,4 +270,176 @@ describe('GET /listings (BRW-1, BRW-4, BRW-10, GEN-5, RES-6)', () => {
       });
     },
   );
+
+  describe('search and category filter (BRW-2, BRW-3)', () => {
+    const HOGAR = { name: 'Hogar', slug: 'hogar' };
+
+    /** Creates one Active listing per title and returns their ids by title. */
+    const listingsTitled = async (
+      titles: string[],
+      overrides: Parameters<typeof createListing>[2] = {},
+    ) => {
+      const sellerId = await signUpSeller();
+      const byTitle: Record<string, string> = {};
+      for (const title of titles) {
+        byTitle[title] = (
+          await createListing(prisma, sellerId, { ...overrides, title })
+        ).id;
+      }
+      return byTitle;
+    };
+
+    it('matches the title in any letter case (BRW-2)', async () => {
+      const ids_ = await listingsTitled([
+        'Silla de Roble',
+        'Mesa de comedor',
+        'SILLÓN reclinable',
+      ]);
+
+      const res = await getFeed({ q: 'sIlLa' }).expect(200);
+
+      expect(ids(res.body)).toEqual([ids_['Silla de Roble']]);
+    });
+
+    it('matches anywhere in the title (BRW-2)', async () => {
+      const ids_ = await listingsTitled(['Silla de roble', 'Mesa de pino']);
+
+      const res = await getFeed({ q: 'roble' }).expect(200);
+
+      expect(ids(res.body)).toEqual([ids_['Silla de roble']]);
+    });
+
+    it('does not search the description (BRW-2)', async () => {
+      // The factory's description is "Roble macizo, sin rayones."
+      await listingsTitled(['Silla de comedor']);
+
+      const res = await getFeed({ q: 'macizo' }).expect(200);
+
+      expect(res.body).toEqual({ data: [], nextCursor: null });
+    });
+
+    it('never returns Pending or Completed listings that match (BRW-1, RES-6)', async () => {
+      const sellerId = await signUpSeller();
+      const active = await createListing(prisma, sellerId, {
+        title: 'Silla activa',
+      });
+      await createListing(prisma, sellerId, {
+        title: 'Silla reservada',
+        status: 'PENDING',
+      });
+      await createListing(prisma, sellerId, {
+        title: 'Silla vendida',
+        status: 'COMPLETED',
+      });
+
+      const res = await getFeed({ q: 'silla' }).expect(200);
+
+      expect(ids(res.body)).toEqual([active.id]);
+    });
+
+    it.each([
+      ['50%', ['Descuento 50% hoy'], ['Descuento 50 hoy']],
+      ['a_b', ['caja a_b'], ['caja axb']],
+      ['c:\\f', ['ruta c:\\fotos'], ['ruta c:fotos']],
+    ])(
+      'treats %s literally, not as a LIKE wildcard (BRW-2)',
+      async (q, matching, others) => {
+        const ids_ = await listingsTitled([...matching, ...others]);
+
+        const res = await getFeed({ q }).expect(200);
+
+        expect(ids(res.body)).toEqual(matching.map((t) => ids_[t]));
+      },
+    );
+
+    it.each([
+      ['shorter than 2 characters', 'a'],
+      ['longer than 60 characters', 'a'.repeat(61)],
+      ['only spaces', '   '],
+      ['shorter than 2 characters once trimmed', ' a '],
+    ])('returns 400 VALIDATION_ERROR when q is %s (BRW-2)', async (_, q) => {
+      const res = await getFeed({ q }).expect(400);
+
+      expect(res.body).toMatchObject({
+        statusCode: 400,
+        code: 'VALIDATION_ERROR',
+        details: expect.arrayContaining([
+          expect.objectContaining({ field: 'q' }),
+        ]),
+      });
+    });
+
+    it('accepts q of exactly 2 and 60 characters (BRW-2)', async () => {
+      await getFeed({ q: 'ab' }).expect(200);
+      await getFeed({ q: 'a'.repeat(60) }).expect(200);
+    });
+
+    it('trims q before searching (BRW-2)', async () => {
+      const ids_ = await listingsTitled(['Silla de roble', 'Mesa de pino']);
+
+      const res = await getFeed({ q: '  silla  ' }).expect(200);
+
+      expect(ids(res.body)).toEqual([ids_['Silla de roble']]);
+    });
+
+    it('counts the 60-character limit after trimming (BRW-2)', async () => {
+      await getFeed({ q: ` ${'a'.repeat(60)} ` }).expect(200);
+    });
+
+    it('filters by category slug (BRW-3)', async () => {
+      const sellerId = await signUpSeller();
+      await createListing(prisma, sellerId, { title: 'Silla' });
+      const lamp = await createListing(prisma, sellerId, {
+        title: 'Lámpara',
+        category: HOGAR,
+      });
+
+      const res = await getFeed({ category: 'hogar' }).expect(200);
+
+      expect(ids(res.body)).toEqual([lamp.id]);
+    });
+
+    it('returns an empty page for an unknown category slug (BRW-3)', async () => {
+      await listingsTitled(['Silla']);
+
+      const res = await getFeed({ category: 'juguetes' }).expect(200);
+
+      expect(res.body).toEqual({ data: [], nextCursor: null });
+    });
+
+    it('combines the category with the search (BRW-3)', async () => {
+      const sellerId = await signUpSeller();
+      await createListing(prisma, sellerId, { title: 'Silla de comedor' });
+      await createListing(prisma, sellerId, {
+        title: 'Lámpara de pie',
+        category: HOGAR,
+      });
+      const match = await createListing(prisma, sellerId, {
+        title: 'Silla de jardín',
+        category: HOGAR,
+      });
+
+      const res = await getFeed({ q: 'silla', category: 'hogar' }).expect(200);
+
+      expect(ids(res.body)).toEqual([match.id]);
+    });
+
+    it('pages through filtered results without gaps or repeats (BRW-3, BRW-10)', async () => {
+      const sellerId = await signUpSeller();
+      const expected: string[] = [];
+      for (let i = 0; i < 6; i++) {
+        const matches = i % 2 === 0;
+        const listing = await createListing(prisma, sellerId, {
+          title: matches ? `Silla ${i}` : `Mesa ${i}`,
+          category: matches ? HOGAR : undefined,
+          publishedAt: new Date(Date.UTC(2026, 9, 5, 10, i)),
+        });
+        if (matches) expected.unshift(listing.id);
+      }
+
+      const seen = await walkFeed({ q: 'silla', category: 'hogar', limit: 2 });
+
+      expect(seen).toEqual(expected);
+    });
+  });
 });
