@@ -18,27 +18,48 @@ const durationInSeconds = z
       : Number(value);
   });
 
-const envSchema = z.object({
-  NODE_ENV: z
-    .enum(['development', 'test', 'production'])
-    .default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
-  DATABASE_URL: z.url(),
-  JWT_SECRET: z.string().min(16),
-  JWT_EXPIRES_IN: durationInSeconds.prefault('1d'),
-  S3_ENDPOINT: z.url(),
-  S3_REGION: z.string().min(1),
-  S3_BUCKET: z.string().min(1),
-  S3_ACCESS_KEY_ID: z.string().min(1),
-  S3_SECRET_ACCESS_KEY: z.string().min(1),
-  S3_FORCE_PATH_STYLE: z.stringbool().default(false),
-  S3_PRESIGN_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
-  // Brute-force protection per client IP on the auth endpoints.
-  AUTH_LOGIN_LIMIT: z.coerce.number().int().positive().default(5),
-  AUTH_LOGIN_WINDOW: durationInSeconds.prefault('1m'),
-  AUTH_REGISTER_LIMIT: z.coerce.number().int().positive().default(10),
-  AUTH_REGISTER_WINDOW: durationInSeconds.prefault('1h'),
-});
+// "https://a.app, https://b.app/" -> ["https://a.app", "https://b.app"]. Browsers
+// send the origin without a trailing slash, so it is stripped here.
+const originList = z
+  .string()
+  .transform((value) =>
+    value
+      .split(',')
+      .map((origin) => origin.trim().replace(/\/+$/, ''))
+      .filter(Boolean),
+  )
+  .pipe(z.array(z.url()));
+
+const envSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(['development', 'test', 'production'])
+      .default('development'),
+    PORT: z.coerce.number().int().positive().default(3000),
+    DATABASE_URL: z.url(),
+    JWT_SECRET: z.string().min(16),
+    JWT_EXPIRES_IN: durationInSeconds.prefault('1d'),
+    S3_ENDPOINT: z.url(),
+    S3_REGION: z.string().min(1),
+    S3_BUCKET: z.string().min(1),
+    S3_ACCESS_KEY_ID: z.string().min(1),
+    S3_SECRET_ACCESS_KEY: z.string().min(1),
+    S3_FORCE_PATH_STYLE: z.stringbool().default(false),
+    S3_PRESIGN_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+    // Brute-force protection per client IP on the auth endpoints.
+    AUTH_LOGIN_LIMIT: z.coerce.number().int().positive().default(5),
+    AUTH_LOGIN_WINDOW: durationInSeconds.prefault('1m'),
+    AUTH_REGISTER_LIMIT: z.coerce.number().int().positive().default(10),
+    AUTH_REGISTER_WINDOW: durationInSeconds.prefault('1h'),
+    // Reverse proxies in front of the API whose X-Forwarded-For is trusted.
+    // Defaults to 1 in production (Railway) and 0 elsewhere.
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).optional(),
+    CORS_ORIGIN: originList.optional(),
+  })
+  .refine((env) => env.NODE_ENV !== 'production' || env.CORS_ORIGIN?.length, {
+    path: ['CORS_ORIGIN'],
+    message: 'is required when NODE_ENV=production',
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

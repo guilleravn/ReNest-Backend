@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: renest
+          POSTGRES_PASSWORD: renest
+          POSTGRES_DB: renest
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U renest -d renest"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      storage:
+        image: rustfs/rustfs:1.0.0
+        env:
+          RUSTFS_ACCESS_KEY: renest
+          RUSTFS_SECRET_KEY: renest-secret
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -fs http://localhost:9000/health"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # The defaults in .env.example match the service containers above.
+      # Before npm ci: its postinstall (prisma generate) needs DATABASE_URL.
+      - run: cp .env.example .env
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:e2e
