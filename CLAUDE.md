@@ -4,10 +4,10 @@ REST API for ReNest, a secondhand marketplace for LatAm, built with NestJS 12, P
 
 ## Commands
 
-- `npm run db:up` / `npm run db:down`: start or stop Postgres (Docker).
+- `npm run db:up` / `npm run db:down`: start or stop Postgres and the local S3 storage, RustFS (Docker).
 - `npm run start:dev`: API on `http://localhost:3000`, with routes under `/api/v1` and Swagger at `/docs`.
 - `npm run db:migrate -- --name <change>`: create and apply a migration.
-- `npm run lint` · `npm test` (unit) · `npm run test:e2e` (uses `DATABASE_URL_TEST`; needs `db:up`).
+- `npm run lint` · `npm test` (unit) · `npm run test:e2e` (uses `DATABASE_URL_TEST` and `S3_BUCKET_TEST`; needs `db:up`).
 - Before every commit: `npm run lint && npm test && npm run test:e2e`.
 
 ## Architecture
