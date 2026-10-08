@@ -60,3 +60,29 @@ describe('validateEnv: storage', () => {
     expect(() => validateEnv(withoutBucket)).toThrow(/S3_BUCKET/);
   });
 });
+
+describe('validateEnv CORS_ORIGIN', () => {
+  it('is optional outside production', () => {
+    expect(validateEnv(base).CORS_ORIGIN).toBeUndefined();
+  });
+
+  it('is required in production', () => {
+    expect(() => validateEnv({ ...base, NODE_ENV: 'production' })).toThrow(
+      /CORS_ORIGIN/,
+    );
+  });
+
+  it('parses a comma-separated list and drops trailing slashes', () => {
+    const env = validateEnv({
+      ...base,
+      CORS_ORIGIN: 'https://a.app/, https://b.app',
+    });
+    expect(env.CORS_ORIGIN).toEqual(['https://a.app', 'https://b.app']);
+  });
+
+  it('rejects a value that is not a URL', () => {
+    expect(() => validateEnv({ ...base, CORS_ORIGIN: 'not-a-url' })).toThrow(
+      /CORS_ORIGIN/,
+    );
+  });
+});
