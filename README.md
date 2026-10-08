@@ -28,6 +28,7 @@ cp .env.example .env
 npm install
 npm run db:up
 npm run db:migrate
+npm run seed
 npm run start:dev
 ```
 
@@ -42,10 +43,24 @@ npm run start:dev
 | `npm run start:dev` | Runs the API in watch mode. |
 | `npm run db:up` / `db:down` | Starts or stops Postgres and the local S3 storage (RustFS, console on `http://localhost:9001`) in Docker. |
 | `npm run db:migrate` | Creates and applies a migration (`-- --name <change>`). |
+| `npm run seed` | Loads the demo data (see [Demo data](#demo-data)). Safe to run again. |
 | `npm run db:studio` | Opens a browser for the database. |
-| `npm run lint` | Runs oxlint (type-aware) over `src/` and `test/`. |
+| `npm run lint` | Runs oxlint (type-aware) over `src/`, `test/` and `prisma/`. |
 | `npm test` | Runs the unit tests (`*.spec.ts`). |
 | `npm run test:e2e` | Runs the e2e tests (`test/*.e2e-spec.ts`) against `DATABASE_URL_TEST`. The database is created if missing, and migrations are applied before the run. Needs `npm run db:up`. |
+
+## Demo data
+
+`npm run seed` creates the categories (BRW-3) and the demo users. It only creates what is missing, so running it again changes nothing and keeps data you created by hand. It runs against whatever `DATABASE_URL` and `S3_*` point to, the deployed environment included (see D-11 in [decisions](docs/decisions.md)).
+
+Every demo user's password is `renest-demo`.
+
+| Email | Who |
+|---|---|
+| `vendedora.verificada@renest.app` | Laura Gómez, verified seller, Cochabamba |
+| `vendedor@renest.app` | Diego Quispe, unverified seller, Arequipa |
+| `comprador1@renest.app` | Ana Rojas, buyer, Cochabamba |
+| `comprador2@renest.app` | Carlos Méndez, buyer, Arequipa |
 
 ## Errors
 
