@@ -90,3 +90,11 @@ Short record of the technical and process decisions behind the MVP. Add an entry
 - **Consequences:**
   - Counters reset when the process restarts, and are not shared if we ever run more than one instance. Then we would move to a shared store such as Redis.
   - Behind the Railway proxy every request would look like it comes from the proxy's IP, so all users would share one counter. The app sets Express `trust proxy` to `TRUST_PROXY_HOPS` (default 1 in production, 0 elsewhere), so `req.ip` comes from the last hop's `X-Forwarded-For` entry and clients cannot spoof it.
+
+## D-13. Prices are typed in whole dollars
+
+- **Context:** the API stores any price from 100 to 2,000,000,000 cents (GEN-2), but the publish and edit forms only accept whole dollars, so the UI never creates a price with cents.
+- **Decision:** keep whole-dollar input for R1 and accept the gap as a known limit.
+- **Consequences:**
+  - A listing created through the API with cents (for example 15050) opens in the edit form as "150.5". The form rejects that value, so the seller must change the price to a whole amount before saving any edit.
+  - No seed or UI path creates such a listing today. If the forms ever accept cents, revisit this entry and the edit form's price prefill.
