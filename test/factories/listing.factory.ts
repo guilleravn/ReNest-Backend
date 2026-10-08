@@ -92,3 +92,26 @@ export async function rateSeller(
     },
   });
 }
+
+interface ReservationOverrides {
+  reservedAt?: Date;
+  sellerHandedOverAt?: Date | null;
+}
+
+/** A reservation by `buyerId` of `listing` on its first pickup option. */
+export async function reserveListing(
+  prisma: PrismaService,
+  listing: Awaited<ReturnType<typeof createListing>>,
+  buyerId: string,
+  { reservedAt, sellerHandedOverAt = null }: ReservationOverrides = {},
+) {
+  return prisma.reservation.create({
+    data: {
+      listingId: listing.id,
+      pickupOptionId: listing.pickupOptions[0].id,
+      buyerId,
+      reservedAt,
+      sellerHandedOverAt,
+    },
+  });
+}

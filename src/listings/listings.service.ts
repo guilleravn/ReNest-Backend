@@ -4,12 +4,15 @@ import { AppException } from '../common/errors/app.exception.js';
 import { ErrorCode } from '../common/errors/error-code.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
+import type { ListingStatus } from '../generated/prisma/enums.js';
 import type { FeedQueryDto } from './dto/feed-query.dto.js';
 import type { FeedPageDto } from './dto/listing-card.dto.js';
 import type { ListingDetailDto } from './dto/listing-detail.dto.js';
+import type { MyListingDto } from './dto/my-listings.dto.js';
 import { escapeLike } from './escape-like.js';
 import { decodeFeedCursor, encodeFeedCursor } from './feed-cursor.js';
-import { sellerRating, toHhmm } from './listing-format.js';
+import { LISTING_CARD_INCLUDE, toListingCard } from './listing-card.js';
+import { sellerRating, toPickupOption } from './listing-format.js';
 
 @Injectable()
 export class ListingsService {
@@ -47,33 +50,53 @@ export class ListingsService {
       ...(afterId && { cursor: { id: afterId } }),
       orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
-      include: {
-        category: { select: { id: true, name: true, slug: true } },
-        photos: { orderBy: { position: 'asc' }, take: 1 },
-        seller: { select: { city: true, isVerified: true } },
-      },
+      include: LISTING_CARD_INCLUDE,
     });
     const hasMore = page.length > limit;
     const listings = hasMore ? page.slice(0, limit) : page;
 
     const data = await Promise.all(
-      listings.map(async (listing) => ({
-        id: listing.id,
-        title: listing.title,
-        priceCents: listing.priceCents,
-        condition: listing.condition,
-        category: listing.category,
-        status: listing.status,
-        coverPhotoUrl: await this.storage.getUrl(listing.photos[0].storageKey),
-        city: listing.seller.city,
-        sellerIsVerified: listing.seller.isVerified,
-        publishedAt: listing.publishedAt,
-      })),
+      listings.map((listing) => toListingCard(listing, this.storage)),
     );
     return {
       data,
       nextCursor: hasMore ? encodeFeedCursor(listings.at(-1)!.id) : null,
     };
+  }
+
+  async getMine(
+    sellerId: string,
+    status: ListingStatus,
+  ): Promise<MyListingDto[]> {
+    const listings = await this.prisma.listing.findMany({
+      where: { sellerId, status },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+      include: {
+        ...LISTING_CARD_INCLUDE,
+        reservation: {
+          include: {
+            buyer: { select: { id: true, fullName: true } },
+            pickupOption: true,
+          },
+        },
+      },
+    });
+
+    return Promise.all(
+      listings.map(async (listing) => {
+        const { reservation } = listing;
+        return {
+          listing: await toListingCard(listing, this.storage),
+          reservation: reservation && {
+            id: reservation.id,
+            reservedAt: reservation.reservedAt,
+            sellerHandedOverAt: reservation.sellerHandedOverAt,
+            buyer: reservation.buyer,
+            pickupOption: toPickupOption(reservation.pickupOption),
+          },
+        };
+      }),
+    );
   }
 
   async getDetail(
@@ -128,15 +151,7 @@ export class ListingsService {
       publishedAt: listing.publishedAt,
       category: listing.category,
       photos,
-      pickupOptions: isActive
-        ? listing.pickupOptions.map((option) => ({
-            id: option.id,
-            locationLabel: option.locationLabel,
-            weekdays: option.weekdays,
-            startTime: toHhmm(option.startTime),
-            endTime: toHhmm(option.endTime),
-          }))
-        : [],
+      pickupOptions: isActive ? listing.pickupOptions.map(toPickupOption) : [],
       seller: {
         id: seller.id,
         fullName: seller.fullName,

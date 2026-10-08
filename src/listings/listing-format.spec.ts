@@ -1,4 +1,4 @@
-import { sellerRating, toHhmm } from './listing-format.js';
+import { sellerRating, toHhmm, toPickupOption } from './listing-format.js';
 
 describe('sellerRating (BRW-6)', () => {
   it('averages the stars to 1 decimal (BRW-6)', () => {
@@ -26,5 +26,27 @@ describe('toHhmm', () => {
 
   it('ignores the server timezone (times are stored as UTC)', () => {
     expect(toHhmm(new Date('1970-01-01T23:30:00.000Z'))).toBe('23:30');
+  });
+});
+
+describe('toPickupOption', () => {
+  it('formats the times as "HH:mm" and keeps only the public fields', () => {
+    const row = {
+      id: 'option-1',
+      listingId: 'listing-1',
+      locationLabel: 'Plaza Principal',
+      weekdays: ['MONDAY' as const, 'WEDNESDAY' as const],
+      startTime: new Date('1970-01-01T18:30:00.000Z'),
+      endTime: new Date('1970-01-01T20:00:00.000Z'),
+      createdAt: new Date(),
+    };
+
+    expect(toPickupOption(row)).toEqual({
+      id: 'option-1',
+      locationLabel: 'Plaza Principal',
+      weekdays: ['MONDAY', 'WEDNESDAY'],
+      startTime: '18:30',
+      endTime: '20:00',
+    });
   });
 });
