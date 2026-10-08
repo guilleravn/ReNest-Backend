@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { AppException } from '../common/errors/app.exception.js';
 import { ErrorCode } from '../common/errors/error-code.js';
+import { Prisma } from '../generated/prisma/client.js';
 import {
   LISTING_CARD_INCLUDE,
   toListingCard,
@@ -9,8 +10,23 @@ import {
 import { toPickupOption } from '../listings/listing-format.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
+import type { CreateReservationDto } from './dto/create-reservation.dto.js';
 import type { ReservationDetailDto } from './dto/reservation-detail.dto.js';
 import { reservationActions } from './reservation-actions.js';
+
+const listingNotAvailable = () =>
+  new AppException(
+    HttpStatus.CONFLICT,
+    ErrorCode.LISTING_NOT_AVAILABLE,
+    'This listing was already reserved.',
+  );
+
+const invalidPickupOption = () =>
+  new AppException(
+    HttpStatus.UNPROCESSABLE_ENTITY,
+    ErrorCode.INVALID_PICKUP_OPTION,
+    'The pickup option does not belong to this listing.',
+  );
 
 const COUNTERPART_SELECT = {
   id: true,
@@ -26,6 +42,62 @@ export class ReservationsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
   ) {}
+
+  async reserve(
+    buyerId: string,
+    { listingId, pickupOptionId }: CreateReservationDto,
+  ): Promise<ReservationDetailDto> {
+    // The order follows the contract: the conditional update locks the
+    // listing row before the option is checked, so a concurrent removal of
+    // the option waits and then finds the listing no longer editable.
+    const { id } = await this.prisma
+      .$transaction(async (tx) => {
+        const listing = await tx.listing.findUnique({
+          where: { id: listingId },
+          select: { sellerId: true },
+        });
+        if (!listing) {
+          throw new AppException(
+            HttpStatus.NOT_FOUND,
+            ErrorCode.LISTING_NOT_FOUND,
+            'Listing not found.',
+          );
+        }
+        if (listing.sellerId === buyerId) {
+          throw new AppException(
+            HttpStatus.FORBIDDEN,
+            ErrorCode.CANNOT_RESERVE_OWN_LISTING,
+            'You cannot reserve your own listing.',
+          );
+        }
+
+        const { count } = await tx.listing.updateMany({
+          where: { id: listingId, status: 'ACTIVE' },
+          data: { status: 'PENDING' },
+        });
+        if (count === 0) throw listingNotAvailable();
+
+        const option = await tx.pickupOption.findFirst({
+          where: { id: pickupOptionId, listingId },
+          select: { id: true },
+        });
+        if (!option) throw invalidPickupOption();
+
+        return tx.reservation.create({
+          data: { listingId, pickupOptionId, buyerId },
+          select: { id: true },
+        });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+          if (error.code === 'P2002') throw listingNotAvailable();
+          if (error.code === 'P2003') throw invalidPickupOption();
+        }
+        throw error;
+      });
+
+    return this.getDetail(id, buyerId);
+  }
 
   // Only the buyer and the seller may see a reservation; anyone else gets a
   // 404, so they can't learn it exists.
