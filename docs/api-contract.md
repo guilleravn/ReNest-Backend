@@ -384,7 +384,7 @@ Buyer and seller only; anyone else → `404 RESERVATION_NOT_FOUND`.
 `200 OK` → `ReservationDetail` (§2).
 
 ### `POST /reservations/:reservationId/handover` — seller: "Confirmar entrega"
-No body. One transaction: `UPDATE reservations SET seller_handed_over_at = now() WHERE id=? AND seller_handed_over_at IS NULL` + `listings.status = 'COMPLETED'`.
+No body. One transaction: `UPDATE reservations SET seller_handed_over_at = now() WHERE id=? AND seller_handed_over_at IS NULL` + `UPDATE listings SET status = 'COMPLETED' WHERE id=? AND status = 'PENDING'`. If either matches no row, nothing is written and the answer is `409 HANDOVER_ALREADY_CONFIRMED` (a reservation's listing is Pending exactly until the handover, GEN-10).
 
 `200 OK` → `ReservationDetail`.
 Errors: `403 NOT_RESERVATION_SELLER`, `404 RESERVATION_NOT_FOUND`, `409 HANDOVER_ALREADY_CONFIRMED`.
