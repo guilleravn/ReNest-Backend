@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CategoryDto } from '../listings/dto/listing-detail.dto.js';
+import { CategoryDto } from './dto/category.dto.js';
 import { CategoriesService } from './categories.service.js';
 
 @ApiTags('categories')
