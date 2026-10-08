@@ -280,12 +280,12 @@ Errors: `400 VALIDATION_ERROR` (missing file), `400 INVALID_FILE` (type/size).
 |---|---|
 | `categoryId` | UUID of an existing category → else `422 CATEGORY_NOT_FOUND`. |
 | `title` | 3–120 chars, trimmed. |
-| `description` | 1–2000 chars. |
+| `description` | 1–2000 chars, trimmed. |
 | `condition` | `LIKE_NEW \| GENTLY_USED \| HEAVILY_USED`. |
 | `priceCents` | integer, **100 – 2 000 000 000** ($1 minimum). |
-| `photoKeys` | **1–3**, unique. Order = `position` (first = cover). Each must start with `uploads/<callerId>/` → else `422 INVALID_PHOTO_KEY`. |
+| `photoKeys` | **1–3**, unique. Order = `position` (first = cover). Each must be a key `POST /uploads/photos` gave the caller, exactly `uploads/<callerId>/<uuid>.(jpg\|png\|webp)` → else `422 INVALID_PHOTO_KEY`. |
 | `pickupOptions` | **1–3**. |
-| `locationLabel` | 3–120 chars. |
+| `locationLabel` | 3–120 chars, trimmed. |
 | `weekdays` | 1–7, no duplicates, `MONDAY…SUNDAY`. |
 | `startTime` / `endTime` | `HH:mm`, `endTime > startTime`. |
 

@@ -1,4 +1,9 @@
-import { MAX_PHOTO_BYTES, detectPhotoType, photoKey } from './photo-file.js';
+import {
+  MAX_PHOTO_BYTES,
+  detectPhotoType,
+  isOwnPhotoKey,
+  photoKey,
+} from './photo-file.js';
 
 const bytes = (...values: number[]) => Buffer.from(values);
 const ascii = (text: string) => Buffer.from(text, 'latin1');
@@ -80,5 +85,34 @@ describe('photoKey', () => {
 
   it('gives every upload a new key', () => {
     expect(photoKey('u', 'jpg')).not.toBe(photoKey('u', 'jpg'));
+  });
+});
+
+describe('isOwnPhotoKey (LST-10)', () => {
+  const userId = '0192f0a4-1c2d-7e3f-8a9b-0c1d2e3f4a5b';
+  const otherId = '0192f0a4-1c2d-7e3f-8a9b-ffffffffffff';
+
+  it('accepts a key made by photoKey for the same user (LST-10)', () => {
+    expect(isOwnPhotoKey(userId, photoKey(userId, 'webp'))).toBe(true);
+  });
+
+  it('rejects a key in another user’s folder (LST-10)', () => {
+    expect(isOwnPhotoKey(userId, photoKey(otherId, 'jpg'))).toBe(false);
+  });
+
+  it('rejects a path that escapes the user’s folder (LST-10)', () => {
+    const key = `uploads/${userId}/../${otherId}/${otherId}.jpg`;
+
+    expect(isOwnPhotoKey(userId, key)).toBe(false);
+  });
+
+  it('rejects a name that is not an upload id (LST-10)', () => {
+    expect(isOwnPhotoKey(userId, `uploads/${userId}/photo.jpg`)).toBe(false);
+  });
+
+  it('rejects an extension the upload never produces (LST-2)', () => {
+    expect(isOwnPhotoKey(userId, `uploads/${userId}/${otherId}.gif`)).toBe(
+      false,
+    );
   });
 });

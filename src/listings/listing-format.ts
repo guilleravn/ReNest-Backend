@@ -20,6 +20,11 @@ export function toHhmm(time: Date): string {
   return time.toISOString().slice(11, 16);
 }
 
+// The inverse, for writing a validated "HH:mm" into a `time` column.
+export function fromHhmm(hhmm: string): Date {
+  return new Date(`1970-01-01T${hhmm}:00.000Z`);
+}
+
 export interface PickupOptionRow {
   id: string;
   locationLabel: string;
