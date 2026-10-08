@@ -179,16 +179,16 @@ describe('Auth (e2e)', () => {
     });
 
     it.each([
-      ['Bolivia', '+59171234567'],
-      ['Peru', '+51912345678'],
-      ['El Salvador', '+50371234567'],
-      ['the United States', '+13852345678'],
+      ['Bolivia', '+59171234567', 'COCHABAMBA_BO'],
+      ['Peru', '+51912345678', 'AREQUIPA_PE'],
+      ['El Salvador', '+50371234567', 'SAN_SALVADOR_SV'],
+      ['the United States', '+13852345678', 'UTAH_US'],
     ])(
-      'creates the account with a valid %s phone (AUTH-4)',
-      async (_country, phoneE164) => {
+      'creates the account with a valid %s phone for its city (AUTH-4)',
+      async (_country, phoneE164, city) => {
         const res = await request(server())
           .post('/api/v1/auth/register')
-          .send(registerPayload({ phoneE164 }))
+          .send(registerPayload({ phoneE164, city }))
           .expect(201);
 
         expect(res.body.user.phoneE164).toBe(phoneE164);
@@ -215,6 +215,31 @@ describe('Auth (e2e)', () => {
         const res = await request(server())
           .post('/api/v1/auth/register')
           .send(registerPayload({ phoneE164 }))
+          .expect(400);
+
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details).toEqual([
+          { field: 'phoneE164', message: expect.any(String) },
+        ]);
+        expect(await prisma.user.count()).toBe(0);
+      },
+    );
+
+    it.each([
+      [
+        'a Peruvian phone with a Bolivian city',
+        '+51912345678',
+        'COCHABAMBA_BO',
+      ],
+      ['a Bolivian phone with a Peruvian city', '+59171234567', 'AREQUIPA_PE'],
+      ['a US phone with a Salvadoran city', '+13852345678', 'SAN_SALVADOR_SV'],
+      ['a Salvadoran phone with a US city', '+50371234567', 'UTAH_US'],
+    ])(
+      'returns 400 VALIDATION_ERROR on phoneE164 for %s (AUTH-4)',
+      async (_case, phoneE164, city) => {
+        const res = await request(server())
+          .post('/api/v1/auth/register')
+          .send(registerPayload({ phoneE164, city }))
           .expect(400);
 
         expect(res.body.code).toBe('VALIDATION_ERROR');

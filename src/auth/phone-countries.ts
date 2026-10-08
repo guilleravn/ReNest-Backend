@@ -1,3 +1,5 @@
+import type { City } from '../generated/prisma/enums.js';
+
 /**
  * Supported phone countries (AUTH-4). `national` matches the digits after the
  * calling code. Keep in sync with the frontend table in
@@ -10,6 +12,13 @@ export const PHONE_COUNTRIES = [
   { country: 'US', callingCode: '1', national: /^[2-9]\d{2}[2-9]\d{6}$/ },
 ] as const;
 
+const CITY_CALLING_CODE: Record<City, string> = {
+  COCHABAMBA_BO: '591',
+  AREQUIPA_PE: '51',
+  SAN_SALVADOR_SV: '503',
+  UTAH_US: '1',
+};
+
 export const PHONE_FORMAT_MESSAGE =
   'phoneE164 must be a mobile number with the country code: +591 (BO), +51 (PE), +503 (SV) or +1 (US)';
 
@@ -21,4 +30,10 @@ export function isSupportedPhone(value: unknown): boolean {
       digits.startsWith(callingCode) &&
       national.test(digits.slice(callingCode.length)),
   );
+}
+
+export function phoneMatchesCity(phone: string, city: unknown): boolean {
+  const callingCode = CITY_CALLING_CODE[city as City];
+  // An unknown city is reported on its own field.
+  return callingCode === undefined || phone.startsWith(`+${callingCode}`);
 }

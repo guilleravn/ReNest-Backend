@@ -180,7 +180,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
 | `email` | valid email, ≤ 255, stored lowercased. |
 | `password` | 8–72 chars. |
 | `fullName` | 2–120 chars. |
-| `phoneE164` | **required**, E.164 mobile number of a supported country (AUTH-4): `+591` + `[67]\d{7}`, `+51` + `9\d{8}`, `+503` + `[67]\d{7}`, `+1` + `[2-9]\d{2}[2-9]\d{6}`. Any other prefix or length → `400 VALIDATION_ERROR` on `phoneE164`. |
+| `phoneE164` | **required**, E.164 mobile number of a supported country (AUTH-4): `+591` + `[67]\d{7}`, `+51` + `9\d{8}`, `+503` + `[67]\d{7}`, `+1` + `[2-9]\d{2}[2-9]\d{6}`. Any other prefix or length → `400 VALIDATION_ERROR` on `phoneE164`. The calling code must also match `city` (`COCHABAMBA_BO` → `+591`, `AREQUIPA_PE` → `+51`, `SAN_SALVADOR_SV` → `+503`, `UTAH_US` → `+1`); a mismatch is the same `400 VALIDATION_ERROR` on `phoneE164`. |
 | `city` | **required**, one of `COCHABAMBA_BO`, `AREQUIPA_PE`, `SAN_SALVADOR_SV`, `UTAH_US`. |
 
 `201 Created` → same body as login.

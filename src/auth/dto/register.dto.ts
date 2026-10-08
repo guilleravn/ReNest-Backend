@@ -8,11 +8,16 @@ import {
   MaxLength,
   Validate,
   ValidatorConstraint,
+  type ValidationArguments,
   type ValidatorConstraintInterface,
 } from 'class-validator';
 import { City } from '../../generated/prisma/enums.js';
 import { normalizeEmail } from './normalize-email.js';
-import { isSupportedPhone, PHONE_FORMAT_MESSAGE } from '../phone-countries.js';
+import {
+  isSupportedPhone,
+  PHONE_FORMAT_MESSAGE,
+  phoneMatchesCity,
+} from '../phone-countries.js';
 
 @ValidatorConstraint({ name: 'supportedPhone' })
 class SupportedPhoneConstraint implements ValidatorConstraintInterface {
@@ -22,6 +27,22 @@ class SupportedPhoneConstraint implements ValidatorConstraintInterface {
 
   defaultMessage(): string {
     return PHONE_FORMAT_MESSAGE;
+  }
+}
+
+@ValidatorConstraint({ name: 'phoneMatchesCity' })
+class PhoneMatchesCityConstraint implements ValidatorConstraintInterface {
+  validate(value: unknown, args: ValidationArguments): boolean {
+    // The format constraint already reports malformed numbers.
+    if (!isSupportedPhone(value)) return true;
+    return phoneMatchesCity(
+      value as string,
+      (args.object as { city?: unknown }).city,
+    );
+  }
+
+  defaultMessage(): string {
+    return 'phoneE164 must start with the calling code of the chosen city';
   }
 }
 
@@ -45,10 +66,11 @@ export class RegisterDto {
   @ApiProperty({
     example: '+59171234567',
     description:
-      'Mobile number in E.164 for BO (+591, 8 digits), PE (+51, 9), SV (+503, 8) or US (+1, 10)',
+      'Mobile number in E.164 for BO (+591, 8 digits), PE (+51, 9), SV (+503, 8) or US (+1, 10); its calling code must match `city`',
   })
   @IsString()
   @Validate(SupportedPhoneConstraint)
+  @Validate(PhoneMatchesCityConstraint)
   phoneE164!: string;
 
   @ApiProperty({ enum: City, enumName: 'City' })
