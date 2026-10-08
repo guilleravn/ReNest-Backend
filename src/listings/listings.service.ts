@@ -5,6 +5,8 @@ import { ErrorCode } from '../common/errors/error-code.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import type { ListingStatus } from '../generated/prisma/enums.js';
+import { isOwnPhotoKey } from '../storage/photo-file.js';
+import type { CreateListingDto } from './dto/create-listing.dto.js';
 import type { FeedQueryDto } from './dto/feed-query.dto.js';
 import type { FeedPageDto } from './dto/listing-card.dto.js';
 import type { ListingDetailDto } from './dto/listing-detail.dto.js';
@@ -12,7 +14,7 @@ import type { MyListingDto } from './dto/my-listings.dto.js';
 import { escapeLike } from './escape-like.js';
 import { decodeFeedCursor, encodeFeedCursor } from './feed-cursor.js';
 import { LISTING_CARD_INCLUDE, toListingCard } from './listing-card.js';
-import { sellerRating, toPickupOption } from './listing-format.js';
+import { fromHhmm, sellerRating, toPickupOption } from './listing-format.js';
 
 @Injectable()
 export class ListingsService {
@@ -20,6 +22,59 @@ export class ListingsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
   ) {}
+
+  async create(
+    sellerId: string,
+    dto: CreateListingDto,
+  ): Promise<ListingDetailDto> {
+    if (!dto.photoKeys.every((key) => isOwnPhotoKey(sellerId, key))) {
+      throw new AppException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        ErrorCode.INVALID_PHOTO_KEY,
+        'Every photo must be one of your uploads.',
+      );
+    }
+    const category = await this.prisma.category.findUnique({
+      where: { id: dto.categoryId },
+      select: { id: true },
+    });
+    if (!category) {
+      throw new AppException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        ErrorCode.CATEGORY_NOT_FOUND,
+        'Category not found.',
+      );
+    }
+
+    // One nested create runs in one transaction: the listing, its photos and
+    // its pickup pairs are saved together or not at all.
+    const { id } = await this.prisma.listing.create({
+      data: {
+        sellerId,
+        categoryId: dto.categoryId,
+        title: dto.title,
+        description: dto.description,
+        condition: dto.condition,
+        priceCents: dto.priceCents,
+        photos: {
+          create: dto.photoKeys.map((storageKey, position) => ({
+            storageKey,
+            position,
+          })),
+        },
+        pickupOptions: {
+          create: dto.pickupOptions.map((option) => ({
+            locationLabel: option.locationLabel,
+            weekdays: option.weekdays,
+            startTime: fromHhmm(option.startTime),
+            endTime: fromHhmm(option.endTime),
+          })),
+        },
+      },
+      select: { id: true },
+    });
+    return this.getDetail(id, sellerId);
+  }
 
   async getFeed({
     q,

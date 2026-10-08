@@ -32,3 +32,13 @@ export function detectPhotoType(file: Buffer): PhotoType | null {
 export function photoKey(userId: string, ext: PhotoType['ext']): string {
   return `uploads/${userId}/${randomUUID()}.${ext}`;
 }
+
+const UPLOAD_NAME =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$/;
+
+// True only for the exact shape photoKey gives this user, so a client can't
+// point a listing at another user's upload or outside its own folder.
+export function isOwnPhotoKey(userId: string, key: string): boolean {
+  const prefix = `uploads/${userId}/`;
+  return key.startsWith(prefix) && UPLOAD_NAME.test(key.slice(prefix.length));
+}

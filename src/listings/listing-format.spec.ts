@@ -1,4 +1,9 @@
-import { sellerRating, toHhmm, toPickupOption } from './listing-format.js';
+import {
+  fromHhmm,
+  sellerRating,
+  toHhmm,
+  toPickupOption,
+} from './listing-format.js';
 
 describe('sellerRating (BRW-6)', () => {
   it('averages the stars to 1 decimal (BRW-6)', () => {
@@ -48,5 +53,15 @@ describe('toPickupOption', () => {
       startTime: '18:30',
       endTime: '20:00',
     });
+  });
+});
+
+describe('fromHhmm (LST-7, GEN-3)', () => {
+  it('reads "HH:mm" as a time of day with no timezone shift (GEN-3)', () => {
+    expect(fromHhmm('18:30').toISOString()).toBe('1970-01-01T18:30:00.000Z');
+  });
+
+  it('round-trips with toHhmm (LST-7)', () => {
+    expect(toHhmm(fromHhmm('00:05'))).toBe('00:05');
   });
 });
