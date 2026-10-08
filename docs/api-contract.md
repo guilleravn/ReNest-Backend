@@ -247,7 +247,7 @@ Errors: `404 LISTING_NOT_FOUND`.
 ## 5. Selling
 
 ### `POST /uploads/photos` — upload one photo
-`multipart/form-data`, field `file`. JPEG/PNG/WebP, ≤ 5 MB. The API stores it in S3/R2 under `uploads/<userId>/<uuid>.<ext>`.
+`multipart/form-data`, field `file`. JPEG/PNG/WebP, ≤ 5 MB. The API stores it in the bucket under `uploads/<userId>/<uuid>.<ext>`.
 
 `201 Created`
 ```json
