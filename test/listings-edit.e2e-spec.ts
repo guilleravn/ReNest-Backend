@@ -210,6 +210,54 @@ describe('PATCH /listings/:listingId (C3, LST-11..13)', () => {
     },
   );
 
+  it('returns 409 LISTING_NOT_EDITABLE when a reservation commits while the edit waits (LST-11)', async () => {
+    const { token, listing } = await arrange();
+    const buyer = await signUp(server(), { email: 'comprador@example.com' });
+
+    // A reservation in progress holds the listing row. The edit must wait for
+    // it and then see the listing Pending, not overwrite what the buyer saw.
+    const { editing } = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM listings WHERE id = ${listing.id}::uuid FOR UPDATE`;
+
+      let settled = false;
+      const editing = edit(listing.id, { title: 'Silla editada' }, token).then(
+        (response) => {
+          settled = true;
+          return response;
+        },
+      );
+      // Polls until the edit is blocked on the row lock (or answered early).
+      while (!settled) {
+        const [{ waiting }] = await prisma.$queryRaw<{ waiting: number }[]>`
+          SELECT count(*)::int AS waiting FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'`;
+        if (waiting > 0) break;
+      }
+
+      await tx.listing.update({
+        where: { id: listing.id },
+        data: { status: 'PENDING' },
+      });
+      await tx.reservation.create({
+        data: {
+          listingId: listing.id,
+          pickupOptionId: listing.pickupOptions[0].id,
+          buyerId: buyer.user.id as string,
+        },
+      });
+      // Wrapped, so the transaction commits without waiting for the edit.
+      return { editing };
+    });
+    const res = await editing;
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('LISTING_NOT_EDITABLE');
+    expect(await savedListing(listing.id)).toMatchObject({
+      title: listing.title,
+      status: 'PENDING',
+    });
+  });
+
   it('returns 422 CATEGORY_NOT_FOUND and changes nothing for an unknown category (LST-1)', async () => {
     const { token, listing } = await arrange();
 
