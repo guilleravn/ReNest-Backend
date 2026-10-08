@@ -71,3 +71,11 @@ Short record of the technical and process decisions behind the MVP. Add an entry
   - Every feature branch starts from `develop` and its PR targets `develop`.
   - `main` is production. It only receives a PR from `develop` when the team decides a version is stable, merged with a **merge commit**. Rebasing would rewrite the hashes and make `main` and `develop` diverge.
   - No direct pushes to `develop` or `main`. GitHub branch protection enforces it; local Claude permissions are only a convenience.
+
+## D-11. The deployed environment is a demo
+
+- **Context:** the deployed app is the demo our tutors review, so it needs realistic data from day one.
+- **Decision:** the demo seed (`npm run seed`) also runs in the deployed environment, with the public credentials from the README. `tsx` is a devDependency and may not be installed on Railway, so run the seed from a local machine with `DATABASE_URL` and `S3_*` pointing at the deployed database and bucket.
+- **Consequences:**
+  - Anyone who reads the README can log in as the demo users.
+  - If someone signs up with a real phone and reserves a demo seller's listing, anyone with the public password can see that number (GEN-7). Use made-up phone numbers when testing the deployed environment.
