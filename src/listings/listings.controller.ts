@@ -8,6 +8,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { OptionalJwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { FeedPageDto } from './dto/listing-card.dto.js';
 import { ListingDetailDto } from './dto/listing-detail.dto.js';
 import { ListingsService } from './listings.service.js';
 
@@ -15,6 +16,16 @@ import { ListingsService } from './listings.service.js';
 @Controller('listings')
 export class ListingsController {
   constructor(private readonly listings: ListingsService) {}
+
+  @Get()
+  @ApiOperation({
+    summary: 'Feed',
+    description: 'Public. Active listings only, newest first.',
+  })
+  @ApiOkResponse({ type: FeedPageDto })
+  getFeed(): Promise<FeedPageDto> {
+    return this.listings.getFeed();
+  }
 
   @Get(':listingId')
   @UseGuards(OptionalJwtAuthGuard)

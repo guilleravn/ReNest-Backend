@@ -4,6 +4,7 @@ import { AppException } from '../common/errors/app.exception.js';
 import { ErrorCode } from '../common/errors/error-code.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
+import type { FeedPageDto } from './dto/listing-card.dto.js';
 import type { ListingDetailDto } from './dto/listing-detail.dto.js';
 import { sellerRating, toHhmm } from './listing-format.js';
 
@@ -13,6 +14,34 @@ export class ListingsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
   ) {}
+
+  async getFeed(): Promise<FeedPageDto> {
+    const listings = await this.prisma.listing.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        photos: { orderBy: { position: 'asc' }, take: 1 },
+        seller: { select: { city: true, isVerified: true } },
+      },
+    });
+
+    const data = await Promise.all(
+      listings.map(async (listing) => ({
+        id: listing.id,
+        title: listing.title,
+        priceCents: listing.priceCents,
+        condition: listing.condition,
+        category: listing.category,
+        status: listing.status,
+        coverPhotoUrl: await this.storage.getUrl(listing.photos[0].storageKey),
+        city: listing.seller.city,
+        sellerIsVerified: listing.seller.isVerified,
+        publishedAt: listing.publishedAt,
+      })),
+    );
+    return { data, nextCursor: null };
+  }
 
   async getDetail(
     listingId: string,
