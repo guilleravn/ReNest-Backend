@@ -164,4 +164,59 @@ export class ReservationsService {
       }),
     };
   }
+
+  // Each update only matches the expected state, so a second or concurrent
+  // confirmation changes nothing and gets a 409. The buyer's side is left
+  // untouched.
+  async confirmHandover(
+    reservationId: string,
+    viewerId: string,
+  ): Promise<ReservationDetailDto> {
+    const reservation = isUUID(reservationId)
+      ? await this.prisma.reservation.findUnique({
+          where: { id: reservationId },
+          select: {
+            buyerId: true,
+            listingId: true,
+            listing: { select: { sellerId: true } },
+          },
+        })
+      : null;
+    const isSeller = reservation?.listing.sellerId === viewerId;
+    if (!reservation || (!isSeller && reservation.buyerId !== viewerId)) {
+      throw new AppException(
+        HttpStatus.NOT_FOUND,
+        ErrorCode.RESERVATION_NOT_FOUND,
+        'Reservation not found.',
+      );
+    }
+    if (!isSeller) {
+      throw new AppException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.NOT_RESERVATION_SELLER,
+        'Only the seller can confirm the handover.',
+      );
+    }
+
+    const alreadyConfirmed = () =>
+      new AppException(
+        HttpStatus.CONFLICT,
+        ErrorCode.HANDOVER_ALREADY_CONFIRMED,
+        'The handover was already confirmed.',
+      );
+    await this.prisma.$transaction(async (tx) => {
+      const handedOver = await tx.reservation.updateMany({
+        where: { id: reservationId, sellerHandedOverAt: null },
+        data: { sellerHandedOverAt: new Date() },
+      });
+      if (handedOver.count === 0) throw alreadyConfirmed();
+      const completed = await tx.listing.updateMany({
+        where: { id: reservation.listingId, status: 'PENDING' },
+        data: { status: 'COMPLETED' },
+      });
+      if (completed.count === 0) throw alreadyConfirmed();
+    });
+
+    return this.getDetail(reservationId, viewerId);
+  }
 }

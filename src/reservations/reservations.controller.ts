@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -61,5 +70,26 @@ export class ReservationsController {
     @CurrentUser() userId: string,
   ): Promise<ReservationDetailDto> {
     return this.reservations.getDetail(reservationId, userId);
+  }
+
+  @Post(':reservationId/handover')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Seller confirms the handover',
+    description:
+      'Sets the handover date and moves the listing to Completed. Can be done once; the buyer’s purchase does not change.',
+  })
+  @ApiOkResponse({ type: ReservationDetailDto })
+  @ApiUnauthorizedResponse({ description: 'UNAUTHORIZED' })
+  @ApiForbiddenResponse({ description: 'NOT_RESERVATION_SELLER' })
+  @ApiNotFoundResponse({ description: 'RESERVATION_NOT_FOUND' })
+  @ApiConflictResponse({ description: 'HANDOVER_ALREADY_CONFIRMED' })
+  confirmHandover(
+    @Param('reservationId') reservationId: string,
+    @CurrentUser() userId: string,
+  ): Promise<ReservationDetailDto> {
+    return this.reservations.confirmHandover(reservationId, userId);
   }
 }
