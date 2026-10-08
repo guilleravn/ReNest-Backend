@@ -126,7 +126,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
     "id": "0192…",
     "fullName": "Laura Gómez",
     "avatarUrl": null,
-    "phoneE164": "+525512345678",
+    "phoneE164": "+59171234567",
     "isVerified": true
   },
   "receptionChecklist": null,
@@ -153,7 +153,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
   "id": "0192…",
   "email": "laura@example.com",
   "fullName": "Laura Gómez",
-  "phoneE164": "+525512345678",
+  "phoneE164": "+59171234567",
   "city": "COCHABAMBA_BO",
   "avatarUrl": null,
   "isVerified": false
@@ -170,7 +170,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
   "email": "laura@example.com",
   "password": "min 8 chars",
   "fullName": "Laura Gómez",
-  "phoneE164": "+525512345678",
+  "phoneE164": "+59171234567",
   "city": "COCHABAMBA_BO"
 }
 ```
@@ -179,7 +179,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
 | `email` | valid email, ≤ 255, stored lowercased. |
 | `password` | 8–72 chars. |
 | `fullName` | 2–120 chars. |
-| `phoneE164` | **required**, `^\+[1-9]\d{7,14}$`. |
+| `phoneE164` | **required**, E.164 mobile number of a supported country (AUTH-4): `+591` + `[67]\d{7}`, `+51` + `9\d{8}`, `+503` + `[67]\d{7}`, `+1` + `[2-9]\d{2}[2-9]\d{6}`. Any other prefix or length → `400 VALIDATION_ERROR` on `phoneE164`. |
 | `city` | **required**, one of `COCHABAMBA_BO`, `AREQUIPA_PE`, `SAN_SALVADOR_SV`, `UTAH_US`. |
 
 `201 Created` → same body as login.
@@ -230,7 +230,7 @@ Only `status = ACTIVE`. Order: `publishedAt DESC, id DESC`.
   "category": { "id": "0192…", "name": "Muebles", "slug": "muebles" },
   "photos": [ /* Photo, 1–3 */ ],
   "pickupOptions": [ /* PickupOption, 1–3 */ ],
-  "seller": { /* SellerPublic */, "phoneE164": "+525512345678" },
+  "seller": { /* SellerPublic */, "phoneE164": "+59171234567" },
   "viewer": { "isSeller": false, "canReserve": true, "canEdit": false }
 }
 ```
