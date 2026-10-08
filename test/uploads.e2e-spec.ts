@@ -5,6 +5,7 @@ import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { setupApp } from './../src/app.setup.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { MAX_PHOTO_BYTES } from './../src/storage/photo-file.js';
 import { signUp } from './factories/auth.factory.js';
 
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]);
@@ -60,6 +61,13 @@ describe('POST /uploads/photos (LST-2)', () => {
     details: null,
   };
 
+  const fileValidationError = {
+    statusCode: 400,
+    code: 'VALIDATION_ERROR',
+    message: expect.any(String),
+    details: [{ field: 'file', message: expect.any(String) }],
+  };
+
   it.each([
     { type: 'JPEG', file: JPEG, ext: 'jpg', contentType: 'image/jpeg' },
     { type: 'PNG', file: PNG, ext: 'png', contentType: 'image/png' },
@@ -104,6 +112,28 @@ describe('POST /uploads/photos (LST-2)', () => {
     expect(res.body).toEqual(invalidFile);
   });
 
+  // A JPEG header padded with zeros up to the given size.
+  const jpegOfSize = (bytes: number) =>
+    Buffer.concat([JPEG, Buffer.alloc(bytes - JPEG.length)]);
+
+  it('returns 201 for a photo of exactly 5 MB (LST-2)', async () => {
+    const { token } = await signUp(server());
+
+    const res = await upload(token, jpegOfSize(MAX_PHOTO_BYTES)).expect(201);
+
+    expect(res.body.storageKey).toMatch(/\.jpg$/);
+  });
+
+  it('returns 400 INVALID_FILE for a photo over 5 MB (LST-2)', async () => {
+    const { token } = await signUp(server());
+
+    const res = await upload(token, jpegOfSize(MAX_PHOTO_BYTES + 1)).expect(
+      400,
+    );
+
+    expect(res.body).toEqual(invalidFile);
+  });
+
   it('returns 400 VALIDATION_ERROR when the file is missing', async () => {
     const { token } = await signUp(server());
 
@@ -113,12 +143,32 @@ describe('POST /uploads/photos (LST-2)', () => {
       .field('caption', 'no file here')
       .expect(400);
 
-    expect(res.body).toEqual({
-      statusCode: 400,
-      code: 'VALIDATION_ERROR',
-      message: expect.any(String),
-      details: [{ field: 'file', message: expect.any(String) }],
-    });
+    expect(res.body).toEqual(fileValidationError);
+  });
+
+  it('returns 400 VALIDATION_ERROR when the file is sent under another field', async () => {
+    const { token } = await signUp(server());
+
+    const res = await request(server())
+      .post('/api/v1/uploads/photos')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('photo', JPEG, 'photo.jpg')
+      .expect(400);
+
+    expect(res.body).toEqual(fileValidationError);
+  });
+
+  it('returns 400 VALIDATION_ERROR when two files are sent', async () => {
+    const { token } = await signUp(server());
+
+    const res = await request(server())
+      .post('/api/v1/uploads/photos')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', JPEG, 'one.jpg')
+      .attach('file', JPEG, 'two.jpg')
+      .expect(400);
+
+    expect(res.body).toEqual(fileValidationError);
   });
 
   it('returns 401 UNAUTHORIZED without a token', async () => {

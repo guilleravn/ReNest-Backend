@@ -1,6 +1,5 @@
 import {
   Controller,
-  HttpStatus,
   Post,
   UploadedFile,
   UseGuards,
@@ -19,10 +18,12 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { AppException } from '../common/errors/app.exception.js';
-import { ErrorCode } from '../common/errors/error-code.js';
 import { MAX_PHOTO_BYTES } from '../storage/photo-file.js';
 import { UploadedPhotoDto } from './dto/uploaded-photo.dto.js';
+import {
+  missingFileException,
+  UploadErrorsInterceptor,
+} from './upload-errors.interceptor.js';
 import { UploadsService } from './uploads.service.js';
 
 @ApiTags('uploads')
@@ -33,6 +34,7 @@ export class UploadsController {
   @Post('photos')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
+    UploadErrorsInterceptor,
     FileInterceptor('file', {
       limits: { fileSize: MAX_PHOTO_BYTES, files: 1 },
     }),
@@ -58,14 +60,7 @@ export class UploadsController {
     @CurrentUser() userId: string,
     @UploadedFile() file: Express.Multer.File | undefined,
   ): Promise<UploadedPhotoDto> {
-    if (!file) {
-      throw new AppException(
-        HttpStatus.BAD_REQUEST,
-        ErrorCode.VALIDATION_ERROR,
-        'Validation failed.',
-        [{ field: 'file', message: 'file is required' }],
-      );
-    }
+    if (!file) throw missingFileException();
     return this.uploads.uploadPhoto(userId, file.buffer);
   }
 }
