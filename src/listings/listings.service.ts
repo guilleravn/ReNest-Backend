@@ -9,7 +9,7 @@ import type { FeedPageDto } from './dto/listing-card.dto.js';
 import type { ListingDetailDto } from './dto/listing-detail.dto.js';
 import { escapeLike } from './escape-like.js';
 import { decodeFeedCursor, encodeFeedCursor } from './feed-cursor.js';
-import { sellerRating, toHhmm } from './listing-format.js';
+import { sellerRating, toPickupOption } from './listing-format.js';
 
 @Injectable()
 export class ListingsService {
@@ -128,15 +128,7 @@ export class ListingsService {
       publishedAt: listing.publishedAt,
       category: listing.category,
       photos,
-      pickupOptions: isActive
-        ? listing.pickupOptions.map((option) => ({
-            id: option.id,
-            locationLabel: option.locationLabel,
-            weekdays: option.weekdays,
-            startTime: toHhmm(option.startTime),
-            endTime: toHhmm(option.endTime),
-          }))
-        : [],
+      pickupOptions: isActive ? listing.pickupOptions.map(toPickupOption) : [],
       seller: {
         id: seller.id,
         fullName: seller.fullName,
