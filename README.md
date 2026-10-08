@@ -51,7 +51,7 @@ npm run start:dev
 
 ## Demo data
 
-`npm run seed` creates the categories (BRW-3) and the demo users. It only creates what is missing, so running it again changes nothing and keeps data you created by hand. It runs against whatever `DATABASE_URL` and `S3_*` point to, the deployed environment included (see D-11 in [decisions](docs/decisions.md)).
+`npm run seed` creates the categories (BRW-3), the demo users and 12 listings whose photos it uploads to `S3_BUCKET`. It only creates what is missing, so running it again changes nothing and keeps data you created by hand. It runs against whatever `DATABASE_URL` and `S3_*` point to, the deployed environment included (see D-11 in [decisions](docs/decisions.md)).
 
 Every demo user's password is `renest-demo`.
 
@@ -61,6 +61,16 @@ Every demo user's password is `renest-demo`.
 | `vendedor@renest.app` | Diego Quispe, unverified seller, Arequipa |
 | `comprador1@renest.app` | Ana Rojas, buyer, Cochabamba |
 | `comprador2@renest.app` | Carlos Méndez, buyer, Arequipa |
+
+What you'll find:
+
+- 7 Active listings in the feed. Laura has 5 of them and Diego has 2.
+- Laura's Pending listings: one with no confirmation yet, and one whose buyer, Carlos, already confirmed reception and rated it.
+- Laura's Completed listings: one received and rated by Ana, and one Carlos hasn't confirmed receiving yet (PUR-4).
+- Diego has one Pending listing, reserved by Ana. He has 0 ratings ("No ratings yet").
+- Laura has 2 ratings, averaging 4.5.
+
+The photos in `prisma/seed/photos/` are generated placeholders.
 
 ## Errors
 
