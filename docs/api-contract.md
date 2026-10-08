@@ -235,7 +235,7 @@ Only `status = ACTIVE`. Order: `publishedAt DESC, id DESC`.
 }
 ```
 - `seller` = `SellerPublic` + `phoneE164` (C1). `seller.phoneE164` powers "Doubts about this product?" (WhatsApp). Optional auth: it is **only filled with a valid token**; anonymous → `null` (the app sends the user to login). An invalid or expired token is treated as anonymous, not `401`.
-- Non-`ACTIVE` listings still return `200` with their `status` (a shared link shows "Ya reservado"); `pickupOptions` is `[]` then.
+- Non-`ACTIVE` listings still return `200` with their `status` (a shared link shows "Ya no está disponible", BRW-8); `pickupOptions` is `[]` then.
 - `canEdit = ACTIVE && isSeller` (edit listing + manage pickup pairs).
 - `viewer` with no token: `{ "isSeller": false, "canReserve": false, "canEdit": false }`. `canReserve = ACTIVE && !isSeller`.
 
