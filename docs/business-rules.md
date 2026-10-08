@@ -67,11 +67,12 @@ Each side completes only with its own confirmation. The seller's handover doesn'
 | AUTH-1 | Sign up requires email, password, full name, phone and city. The city comes from a fixed list: Cochabamba (BO), Arequipa (PE), San Salvador (SV), Utah (US). It is stored as an enum (`COCHABAMBA_BO`, ...); the labels live in the frontend. | Added |
 | AUTH-2 | Email is unique and case-insensitive (`Ana@x.com` equals `ana@x.com`). | Added |
 | AUTH-3 | Password: 8 to 72 characters. | Added |
-| AUTH-4 | Phone in E.164 format (`+52...`, `+57...`, `+591...`), because it builds the WhatsApp link. | Added |
+| AUTH-4 | Phone in E.164 format, because it builds the WhatsApp link. Only mobile numbers of the four supported countries are accepted: Bolivia `+591` (8 digits, starts with 6 or 7), Peru `+51` (9 digits, starts with 9), El Salvador `+503` (8 digits, starts with 6 or 7), United States `+1` (10 digits, area code and exchange start with 2-9). The backend validates the number against the country its prefix names. The prefix must also belong to the chosen city (`COCHABAMBA_BO` +591, `AREQUIPA_PE` +51, `SAN_SALVADOR_SV` +503, `UTAH_US` +1); otherwise the request is rejected as a validation error on `phoneE164`. | Added |
 | AUTH-5 | Login with email and password. On failure the message is always "Incorrect email or password", never revealing whether the email exists. | Added |
 | AUTH-6 | A single session token lasting 1 day, with no refresh. When it expires, the user logs in again. Logout discards the token on the client. | Added |
 | AUTH-7 | No avatar upload in R1. The app shows the user's initials. | Added |
 | AUTH-8 | The Account tab ("Cuenta") shows the user's name, email, phone and city (read-only) and a logout button. | Added |
+| AUTH-9 | Login and register are rate limited per client IP to slow down brute force and mass sign-ups. Login: 5 requests per minute (failed and successful attempts both count). Register: 10 requests per hour. Each endpoint has its own counter. Over the limit the API answers `429 RATE_LIMITED` with a `Retry-After` header (seconds), even if the credentials are correct. The limits are configurable (`AUTH_LOGIN_LIMIT`, `AUTH_LOGIN_WINDOW`, `AUTH_REGISTER_LIMIT`, `AUTH_REGISTER_WINDOW`). | Added |
 
 ---
 

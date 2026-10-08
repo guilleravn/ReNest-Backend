@@ -79,3 +79,14 @@ Short record of the technical and process decisions behind the MVP. Add an entry
 - **Consequences:**
   - Anyone who reads the README can log in as the demo users.
   - If someone signs up with a real phone and reserves a demo seller's listing, anyone with the public password can see that number (GEN-7). Use made-up phone numbers when testing the deployed environment.
+
+## D-12. Rate limiting: in-memory, per IP
+
+- **Context:** login and register are public, so they need a brake against brute force and mass sign-ups (AUTH-9).
+- **Decision:** use `@nestjs/throttler` with its default in-memory store, keyed by client IP, on `/auth/login` and `/auth/register` only.
+- **Why it is acceptable now:**
+  - R1 runs a single API instance, so one process sees every request and the counters are exact.
+  - It adds no infrastructure (no Redis) to a demo-scale deployment.
+- **Consequences:**
+  - Counters reset when the process restarts, and are not shared if we ever run more than one instance. Then we would move to a shared store such as Redis.
+  - Pending before relying on it in the deployed environment: behind the Railway proxy every request looks like it comes from the proxy's IP, so all users would share one counter. Set `trust proxy` on the Express app so `req.ip` comes from `X-Forwarded-For`, and check the proxy hop count so clients cannot spoof the header.

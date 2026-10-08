@@ -44,6 +44,7 @@ Data model: [`erd.dbml`](erd.dbml). 18 endpoints.
 | `404` | Does not exist **or** the caller must not know it exists (other people's reservations). Also unknown routes. | `NOT_FOUND` |
 | `409` | Valid request that conflicts with the current state. | `CONFLICT` |
 | `422` | Input refers to something invalid (pickup option from another listing, photo not yours…). | `UNPROCESSABLE_ENTITY` |
+| `429` | Too many attempts from the same IP on a rate-limited endpoint (`/auth/login`, `/auth/register`). Carries a `Retry-After` header (seconds). | `RATE_LIMITED` |
 | `500` | Unexpected failure. | `INTERNAL_ERROR` |
 | `503` | A dependency is down (`GET /health` when the database is unreachable). | `SERVICE_UNAVAILABLE` |
 
@@ -126,7 +127,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
     "id": "0192…",
     "fullName": "Laura Gómez",
     "avatarUrl": null,
-    "phoneE164": "+525512345678",
+    "phoneE164": "+59171234567",
     "isVerified": true
   },
   "receptionChecklist": null,
@@ -153,7 +154,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
   "id": "0192…",
   "email": "laura@example.com",
   "fullName": "Laura Gómez",
-  "phoneE164": "+525512345678",
+  "phoneE164": "+59171234567",
   "city": "COCHABAMBA_BO",
   "avatarUrl": null,
   "isVerified": false
@@ -170,7 +171,7 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
   "email": "laura@example.com",
   "password": "min 8 chars",
   "fullName": "Laura Gómez",
-  "phoneE164": "+525512345678",
+  "phoneE164": "+59171234567",
   "city": "COCHABAMBA_BO"
 }
 ```
@@ -179,11 +180,11 @@ Google Maps link (frontend): `https://www.google.com/maps/search/?api=1&query=<e
 | `email` | valid email, ≤ 255, stored lowercased. |
 | `password` | 8–72 chars. |
 | `fullName` | 2–120 chars. |
-| `phoneE164` | **required**, `^\+[1-9]\d{7,14}$`. |
+| `phoneE164` | **required**, E.164 mobile number of a supported country (AUTH-4): `+591` + `[67]\d{7}`, `+51` + `9\d{8}`, `+503` + `[67]\d{7}`, `+1` + `[2-9]\d{2}[2-9]\d{6}`. Any other prefix or length → `400 VALIDATION_ERROR` on `phoneE164`. The calling code must also match `city` (`COCHABAMBA_BO` → `+591`, `AREQUIPA_PE` → `+51`, `SAN_SALVADOR_SV` → `+503`, `UTAH_US` → `+1`); a mismatch is the same `400 VALIDATION_ERROR` on `phoneE164`. |
 | `city` | **required**, one of `COCHABAMBA_BO`, `AREQUIPA_PE`, `SAN_SALVADOR_SV`, `UTAH_US`. |
 
 `201 Created` → same body as login.
-Errors: `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`.
+Errors: `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`, `429 RATE_LIMITED` (default 10 requests per hour per IP).
 
 ### `POST /auth/login` (public)
 ```json
@@ -194,7 +195,7 @@ Errors: `400 VALIDATION_ERROR`, `409 EMAIL_TAKEN`.
 { "accessToken": "eyJ…", "tokenType": "Bearer", "expiresIn": 86400, "user": { /* Me */ } }
 ```
 JWT payload: `{ sub: userId, iat, exp }`. No logout endpoint: the client discards the token.
-Errors: `400 VALIDATION_ERROR`, `401 INVALID_CREDENTIALS` (same for unknown email and wrong password).
+Errors: `400 VALIDATION_ERROR`, `401 INVALID_CREDENTIALS` (same for unknown email and wrong password), `429 RATE_LIMITED` (default 5 requests per minute per IP, counting failed and successful attempts).
 
 ### `GET /me`
 `200 OK` → `Me`.
@@ -230,7 +231,7 @@ Only `status = ACTIVE`. Order: `publishedAt DESC, id DESC`.
   "category": { "id": "0192…", "name": "Muebles", "slug": "muebles" },
   "photos": [ /* Photo, 1–3 */ ],
   "pickupOptions": [ /* PickupOption, 1–3 */ ],
-  "seller": { /* SellerPublic */, "phoneE164": "+525512345678" },
+  "seller": { /* SellerPublic */, "phoneE164": "+59171234567" },
   "viewer": { "isSeller": false, "canReserve": true, "canEdit": false }
 }
 ```
@@ -458,7 +459,7 @@ Auth column:
 
 **Generic** (one per status, see §1.1): `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `UNPROCESSABLE_ENTITY`, `HTTP_ERROR` (any other 4xx), `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR`.
 
-**Domain:** `INVALID_FILE`, `INVALID_CREDENTIALS`, `EMAIL_TAKEN`, `LISTING_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `INVALID_PHOTO_KEY`, `NOT_LISTING_OWNER`, `LISTING_NOT_EDITABLE`, `PICKUP_OPTION_NOT_FOUND`, `PICKUP_OPTION_LIMIT`, `LAST_PICKUP_OPTION`, `CANNOT_RESERVE_OWN_LISTING`, `INVALID_PICKUP_OPTION`, `LISTING_NOT_AVAILABLE`, `RESERVATION_NOT_FOUND`, `NOT_RESERVATION_SELLER`, `NOT_RESERVATION_BUYER`, `HANDOVER_ALREADY_CONFIRMED`, `RECEPTION_ALREADY_CONFIRMED`, `RECEPTION_NOT_CONFIRMED`, `ALREADY_RATED`.
+**Domain:** `INVALID_FILE`, `INVALID_CREDENTIALS`, `EMAIL_TAKEN`, `LISTING_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `INVALID_PHOTO_KEY`, `NOT_LISTING_OWNER`, `LISTING_NOT_EDITABLE`, `PICKUP_OPTION_NOT_FOUND`, `PICKUP_OPTION_LIMIT`, `LAST_PICKUP_OPTION`, `CANNOT_RESERVE_OWN_LISTING`, `INVALID_PICKUP_OPTION`, `LISTING_NOT_AVAILABLE`, `RESERVATION_NOT_FOUND`, `NOT_RESERVATION_SELLER`, `NOT_RESERVATION_BUYER`, `HANDOVER_ALREADY_CONFIRMED`, `RECEPTION_ALREADY_CONFIRMED`, `RECEPTION_NOT_CONFIRMED`, `ALREADY_RATED`, `RATE_LIMITED`.
 
 Backend source: `src/common/errors/error-code.ts`. Keep the frontend copy in sync.
 

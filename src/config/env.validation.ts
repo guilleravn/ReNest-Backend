@@ -33,6 +33,11 @@ const envSchema = z.object({
   S3_SECRET_ACCESS_KEY: z.string().min(1),
   S3_FORCE_PATH_STYLE: z.stringbool().default(false),
   S3_PRESIGN_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  // Brute-force protection per client IP on the auth endpoints.
+  AUTH_LOGIN_LIMIT: z.coerce.number().int().positive().default(5),
+  AUTH_LOGIN_WINDOW: durationInSeconds.prefault('1m'),
+  AUTH_REGISTER_LIMIT: z.coerce.number().int().positive().default(10),
+  AUTH_REGISTER_WINDOW: durationInSeconds.prefault('1h'),
 });
 
 export type Env = z.infer<typeof envSchema>;
