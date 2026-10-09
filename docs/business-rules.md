@@ -90,6 +90,7 @@ Each side completes only with its own confirmation. The seller's handover doesn'
 | BRW-8 | A listing that is Pending or Completed (for example, opened from a shared link) still opens, shows "No longer available" and has no "Schedule Pickup" button. | Added |
 | BRW-9 | The seller doesn't see "Schedule Pickup" on their own listing. | Added |
 | BRW-10 | The feed and search return 20 listings per page, loaded with a "Load more" button. | Added |
+| BRW-11 | The feed can be filtered by the seller's city. Logged-in users start filtered by their own city; anonymous visitors see every city. "Todas las ubicaciones" removes the filter. It combines with search and category (BRW-2, BRW-3) and with pagination (BRW-10). | Added |
 
 ---
 

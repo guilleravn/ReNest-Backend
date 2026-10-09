@@ -8,7 +8,7 @@ import { PrismaService } from './../src/prisma/prisma.service.js';
 import { signUp } from './factories/auth.factory.js';
 import { createListing } from './factories/listing.factory.js';
 
-describe('GET /listings (BRW-1, BRW-4, BRW-10, GEN-5, RES-6)', () => {
+describe('GET /listings (BRW-1..4, BRW-10, BRW-11, GEN-5, RES-6)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
 
@@ -441,5 +441,113 @@ describe('GET /listings (BRW-1, BRW-4, BRW-10, GEN-5, RES-6)', () => {
 
       expect(seen).toEqual(expected);
     });
+  });
+
+  describe('city filter (BRW-11)', () => {
+    const HOGAR = { name: 'Hogar', slug: 'hogar' };
+
+    /** A seller from Arequipa; `signUpSeller` gives one from Cochabamba. */
+    const signUpArequipaSeller = async () =>
+      (
+        await signUp(server(), {
+          email: 'pedro@example.com',
+          phoneE164: '+51987654321',
+          city: 'AREQUIPA_PE',
+        })
+      ).user.id as string;
+
+    it('returns only listings whose seller is from that city (BRW-11)', async () => {
+      const cochabamba = await signUpSeller();
+      const arequipa = await signUpArequipaSeller();
+      const local = await createListing(prisma, cochabamba);
+      await createListing(prisma, arequipa);
+
+      const res = await getFeed({ city: 'COCHABAMBA_BO' }).expect(200);
+
+      expect(ids(res.body)).toEqual([local.id]);
+    });
+
+    it('returns every city when city is absent (BRW-11)', async () => {
+      const cochabamba = await signUpSeller();
+      const arequipa = await signUpArequipaSeller();
+      const older = await createListing(prisma, cochabamba, {
+        publishedAt: new Date('2026-10-01T10:00:00.000Z'),
+      });
+      const newer = await createListing(prisma, arequipa, {
+        publishedAt: new Date('2026-10-05T10:00:00.000Z'),
+      });
+
+      const res = await getFeed().expect(200);
+
+      expect(ids(res.body)).toEqual([newer.id, older.id]);
+    });
+
+    it('returns an empty page for a city with no listings (BRW-11)', async () => {
+      await createListing(prisma, await signUpSeller());
+
+      const res = await getFeed({ city: 'UTAH_US' }).expect(200);
+
+      expect(res.body).toEqual({ data: [], nextCursor: null });
+    });
+
+    it('combines the city with the search and the category (BRW-2, BRW-3, BRW-11)', async () => {
+      const cochabamba = await signUpSeller();
+      const arequipa = await signUpArequipaSeller();
+      const match = await createListing(prisma, arequipa, {
+        title: 'Silla de jardín',
+        category: HOGAR,
+      });
+      await createListing(prisma, cochabamba, {
+        title: 'Silla de terraza',
+        category: HOGAR,
+      });
+      await createListing(prisma, arequipa, {
+        title: 'Lámpara de pie',
+        category: HOGAR,
+      });
+      await createListing(prisma, arequipa, { title: 'Silla de comedor' });
+
+      const res = await getFeed({
+        city: 'AREQUIPA_PE',
+        q: 'silla',
+        category: 'hogar',
+      }).expect(200);
+
+      expect(ids(res.body)).toEqual([match.id]);
+    });
+
+    it('pages through one city without gaps or repeats (BRW-10, BRW-11)', async () => {
+      const cochabamba = await signUpSeller();
+      const arequipa = await signUpArequipaSeller();
+      const expected: string[] = [];
+      for (let i = 0; i < 6; i++) {
+        const local = i % 2 === 0;
+        const listing = await createListing(
+          prisma,
+          local ? cochabamba : arequipa,
+          { publishedAt: new Date(Date.UTC(2026, 9, 5, 10, i)) },
+        );
+        if (local) expected.unshift(listing.id);
+      }
+
+      const seen = await walkFeed({ city: 'COCHABAMBA_BO', limit: 2 });
+
+      expect(seen).toEqual(expected);
+    });
+
+    it.each(['LA_PAZ_BO', 'cochabamba_bo', 'all', ''])(
+      'returns 400 VALIDATION_ERROR for city=%s (BRW-11)',
+      async (city) => {
+        const res = await getFeed({ city }).expect(400);
+
+        expect(res.body).toMatchObject({
+          statusCode: 400,
+          code: 'VALIDATION_ERROR',
+          details: expect.arrayContaining([
+            expect.objectContaining({ field: 'city' }),
+          ]),
+        });
+      },
+    );
   });
 });

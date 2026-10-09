@@ -277,6 +277,7 @@ export class ListingsService {
   async getFeed({
     q,
     category,
+    city,
     limit,
     cursor,
   }: FeedQueryDto): Promise<FeedPageDto> {
@@ -298,6 +299,7 @@ export class ListingsService {
         status: 'ACTIVE',
         ...(q && { title: { contains: escapeLike(q), mode: 'insensitive' } }),
         ...(category && { category: { slug: category } }),
+        ...(city && { seller: { city } }),
         ...(afterId && { id: { not: afterId } }),
       },
       ...(afterId && { cursor: { id: afterId } }),
