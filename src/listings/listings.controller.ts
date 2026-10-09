@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   HttpStatus,
   Param,
   Patch,
@@ -15,6 +17,7 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -146,5 +149,31 @@ export class ListingsController {
     @Body() dto: PickupOptionInputDto,
   ): Promise<PickupOptionDto> {
     return this.listings.addPickupOption(userId, listingId, dto);
+  }
+
+  @Delete(':listingId/pickup-options/:pickupOptionId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Remove a pickup pair',
+    description:
+      'Seller only, while the listing is ACTIVE. A listing keeps at least 1 pair; to change one, remove it and add a new one.',
+  })
+  @ApiNoContentResponse()
+  @ApiUnauthorizedResponse({ description: 'UNAUTHORIZED' })
+  @ApiForbiddenResponse({ description: 'NOT_LISTING_OWNER' })
+  @ApiNotFoundResponse({
+    description: 'LISTING_NOT_FOUND, PICKUP_OPTION_NOT_FOUND',
+  })
+  @ApiConflictResponse({
+    description: 'LISTING_NOT_EDITABLE, LAST_PICKUP_OPTION',
+  })
+  removePickupOption(
+    @Param('listingId') listingId: string,
+    @Param('pickupOptionId') pickupOptionId: string,
+    @CurrentUser() userId: string,
+  ): Promise<void> {
+    return this.listings.removePickupOption(userId, listingId, pickupOptionId);
   }
 }

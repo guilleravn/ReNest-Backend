@@ -158,6 +158,40 @@ export class ListingsService {
     });
   }
 
+  async removePickupOption(
+    sellerId: string,
+    listingId: string,
+    pickupOptionId: string,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Under the row lock, a reservation can't pick this pair between the
+      // status check and the delete, and two removes can't both see 2 pairs.
+      await this.lockEditableListing(tx, sellerId, listingId);
+      const option = isUUID(pickupOptionId)
+        ? await tx.pickupOption.findFirst({
+            where: { id: pickupOptionId, listingId },
+            select: { id: true },
+          })
+        : null;
+      if (!option) {
+        throw new AppException(
+          HttpStatus.NOT_FOUND,
+          ErrorCode.PICKUP_OPTION_NOT_FOUND,
+          'Pickup option not found.',
+        );
+      }
+      const count = await tx.pickupOption.count({ where: { listingId } });
+      if (count <= 1) {
+        throw new AppException(
+          HttpStatus.CONFLICT,
+          ErrorCode.LAST_PICKUP_OPTION,
+          'A listing needs at least one pickup option.',
+        );
+      }
+      await tx.pickupOption.delete({ where: { id: option.id } });
+    });
+  }
+
   // The row lock orders the edit against a reservation: a reservation waits
   // for the edit to commit, and an edit that waited for a reservation then
   // finds the listing Pending.
