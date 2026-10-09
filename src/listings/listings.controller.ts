@@ -2,7 +2,9 @@ import {
   Body,
   Controller,
   Get,
+  HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -10,7 +12,9 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -20,10 +24,13 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { AppException } from '../common/errors/app.exception.js';
+import { ErrorCode } from '../common/errors/error-code.js';
 import { CreateListingDto } from './dto/create-listing.dto.js';
 import { FeedQueryDto } from './dto/feed-query.dto.js';
 import { FeedPageDto } from './dto/listing-card.dto.js';
 import { ListingDetailDto } from './dto/listing-detail.dto.js';
+import { UpdateListingDto } from './dto/update-listing.dto.js';
 import { ListingsService } from './listings.service.js';
 
 @ApiTags('listings')
@@ -79,5 +86,38 @@ export class ListingsController {
     @CurrentUser() userId: string | undefined,
   ): Promise<ListingDetailDto> {
     return this.listings.getDetail(listingId, userId);
+  }
+
+  @Patch(':listingId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Edit a listing',
+    description:
+      'Seller only, while the listing is ACTIVE. Any subset of the fields, with the same rules as publishing; publishedAt does not change.',
+  })
+  @ApiOkResponse({ type: ListingDetailDto })
+  @ApiBadRequestResponse({ description: 'VALIDATION_ERROR' })
+  @ApiUnauthorizedResponse({ description: 'UNAUTHORIZED' })
+  @ApiForbiddenResponse({ description: 'NOT_LISTING_OWNER' })
+  @ApiNotFoundResponse({ description: 'LISTING_NOT_FOUND' })
+  @ApiConflictResponse({ description: 'LISTING_NOT_EDITABLE' })
+  @ApiUnprocessableEntityResponse({
+    description: 'CATEGORY_NOT_FOUND, INVALID_PHOTO_KEY',
+  })
+  update(
+    @Param('listingId') listingId: string,
+    @CurrentUser() userId: string,
+    @Body() dto: UpdateListingDto,
+  ): Promise<ListingDetailDto> {
+    if (Object.values(dto).every((value) => value === undefined)) {
+      throw new AppException(
+        HttpStatus.BAD_REQUEST,
+        ErrorCode.VALIDATION_ERROR,
+        'Validation failed.',
+        [{ field: 'body', message: 'send at least one field to change' }],
+      );
+    }
+    return this.listings.update(userId, listingId, dto);
   }
 }

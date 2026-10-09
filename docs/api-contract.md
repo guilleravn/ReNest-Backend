@@ -328,7 +328,7 @@ Any subset of: `categoryId`, `title`, `description`, `condition`, `priceCents`, 
   ]
 }
 ```
-- `photos` **replaces the whole set** (1–3, order = position, first = cover). Each item is either an existing photo (`photoId`, from the listing detail) or a new upload (`storageKey`, from `POST /uploads/photos`). Existing photos left out are deleted.
+- `photos` **replaces the whole set** (1–3, order = position, first = cover). Each item is either an existing photo (`photoId`, from the listing detail) or a new upload (`storageKey`, from `POST /uploads/photos`). An item with both keys or neither, or the same photo twice → `400 VALIDATION_ERROR`. Existing photos left out are deleted.
 - `publishedAt` does not change (the listing doesn't jump to the top of the feed).
 
 `200 OK` → listing detail. Extra errors: `422 CATEGORY_NOT_FOUND`, `422 INVALID_PHOTO_KEY` (unknown `photoId` for this listing, or `storageKey` not yours).
