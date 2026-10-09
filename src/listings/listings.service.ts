@@ -7,10 +7,17 @@ import { StorageService } from '../storage/storage.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import type { ListingStatus } from '../generated/prisma/enums.js';
 import { isOwnPhotoKey } from '../storage/photo-file.js';
-import type { CreateListingDto } from './dto/create-listing.dto.js';
+import {
+  MAX_PICKUP_OPTIONS,
+  type CreateListingDto,
+  type PickupOptionInputDto,
+} from './dto/create-listing.dto.js';
 import type { FeedQueryDto } from './dto/feed-query.dto.js';
 import type { FeedPageDto } from './dto/listing-card.dto.js';
-import type { ListingDetailDto } from './dto/listing-detail.dto.js';
+import type {
+  ListingDetailDto,
+  PickupOptionDto,
+} from './dto/listing-detail.dto.js';
 import type { MyListingDto } from './dto/my-listings.dto.js';
 import type {
   PhotoInputDto,
@@ -119,6 +126,36 @@ export class ListingsService {
       });
     });
     return this.getDetail(listingId, sellerId);
+  }
+
+  async addPickupOption(
+    sellerId: string,
+    listingId: string,
+    dto: PickupOptionInputDto,
+  ): Promise<PickupOptionDto> {
+    return this.prisma.$transaction(async (tx) => {
+      // The count runs under the row lock, so two concurrent adds can't
+      // both see 2 pairs and leave the listing with 4.
+      await this.lockEditableListing(tx, sellerId, listingId);
+      const count = await tx.pickupOption.count({ where: { listingId } });
+      if (count >= MAX_PICKUP_OPTIONS) {
+        throw new AppException(
+          HttpStatus.CONFLICT,
+          ErrorCode.PICKUP_OPTION_LIMIT,
+          `A listing can have at most ${MAX_PICKUP_OPTIONS} pickup options.`,
+        );
+      }
+      const option = await tx.pickupOption.create({
+        data: {
+          listingId,
+          locationLabel: dto.locationLabel,
+          weekdays: dto.weekdays,
+          startTime: fromHhmm(dto.startTime),
+          endTime: fromHhmm(dto.endTime),
+        },
+      });
+      return toPickupOption(option);
+    });
   }
 
   // The row lock orders the edit against a reservation: a reservation waits

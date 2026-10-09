@@ -26,10 +26,13 @@ import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { AppException } from '../common/errors/app.exception.js';
 import { ErrorCode } from '../common/errors/error-code.js';
-import { CreateListingDto } from './dto/create-listing.dto.js';
+import {
+  CreateListingDto,
+  PickupOptionInputDto,
+} from './dto/create-listing.dto.js';
 import { FeedQueryDto } from './dto/feed-query.dto.js';
 import { FeedPageDto } from './dto/listing-card.dto.js';
-import { ListingDetailDto } from './dto/listing-detail.dto.js';
+import { ListingDetailDto, PickupOptionDto } from './dto/listing-detail.dto.js';
 import { UpdateListingDto } from './dto/update-listing.dto.js';
 import { ListingsService } from './listings.service.js';
 
@@ -119,5 +122,29 @@ export class ListingsController {
       );
     }
     return this.listings.update(userId, listingId, dto);
+  }
+
+  @Post(':listingId/pickup-options')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Add a pickup pair',
+    description:
+      'Seller only, while the listing is ACTIVE. A listing has at most 3 pairs; pairs are not edited in place.',
+  })
+  @ApiCreatedResponse({ type: PickupOptionDto })
+  @ApiBadRequestResponse({ description: 'VALIDATION_ERROR' })
+  @ApiUnauthorizedResponse({ description: 'UNAUTHORIZED' })
+  @ApiForbiddenResponse({ description: 'NOT_LISTING_OWNER' })
+  @ApiNotFoundResponse({ description: 'LISTING_NOT_FOUND' })
+  @ApiConflictResponse({
+    description: 'LISTING_NOT_EDITABLE, PICKUP_OPTION_LIMIT',
+  })
+  addPickupOption(
+    @Param('listingId') listingId: string,
+    @CurrentUser() userId: string,
+    @Body() dto: PickupOptionInputDto,
+  ): Promise<PickupOptionDto> {
+    return this.listings.addPickupOption(userId, listingId, dto);
   }
 }
