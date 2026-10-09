@@ -7,10 +7,17 @@ import { StorageService } from '../storage/storage.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import type { ListingStatus } from '../generated/prisma/enums.js';
 import { isOwnPhotoKey } from '../storage/photo-file.js';
-import type { CreateListingDto } from './dto/create-listing.dto.js';
+import {
+  MAX_PICKUP_OPTIONS,
+  type CreateListingDto,
+  type PickupOptionInputDto,
+} from './dto/create-listing.dto.js';
 import type { FeedQueryDto } from './dto/feed-query.dto.js';
 import type { FeedPageDto } from './dto/listing-card.dto.js';
-import type { ListingDetailDto } from './dto/listing-detail.dto.js';
+import type {
+  ListingDetailDto,
+  PickupOptionDto,
+} from './dto/listing-detail.dto.js';
 import type { MyListingDto } from './dto/my-listings.dto.js';
 import type {
   PhotoInputDto,
@@ -87,35 +94,7 @@ export class ListingsService {
     dto: UpdateListingDto,
   ): Promise<ListingDetailDto> {
     await this.prisma.$transaction(async (tx) => {
-      // The row lock orders the edit against a reservation: a reservation
-      // waits for the edit to commit, and an edit that waited for a
-      // reservation then finds the listing Pending.
-      const [listing] = isUUID(listingId)
-        ? await tx.$queryRaw<{ sellerId: string; status: ListingStatus }[]>`
-            SELECT seller_id AS "sellerId", status::text AS status
-            FROM listings WHERE id = ${listingId}::uuid FOR UPDATE`
-        : [];
-      if (!listing) {
-        throw new AppException(
-          HttpStatus.NOT_FOUND,
-          ErrorCode.LISTING_NOT_FOUND,
-          'Listing not found.',
-        );
-      }
-      if (listing.sellerId !== sellerId) {
-        throw new AppException(
-          HttpStatus.FORBIDDEN,
-          ErrorCode.NOT_LISTING_OWNER,
-          'You can only edit your own listings.',
-        );
-      }
-      if (listing.status !== 'ACTIVE') {
-        throw new AppException(
-          HttpStatus.CONFLICT,
-          ErrorCode.LISTING_NOT_EDITABLE,
-          'This listing was already reserved and can no longer be edited.',
-        );
-      }
+      await this.lockEditableListing(tx, sellerId, listingId);
       if (dto.categoryId !== undefined) {
         const category = await tx.category.findUnique({
           where: { id: dto.categoryId },
@@ -147,6 +126,106 @@ export class ListingsService {
       });
     });
     return this.getDetail(listingId, sellerId);
+  }
+
+  async addPickupOption(
+    sellerId: string,
+    listingId: string,
+    dto: PickupOptionInputDto,
+  ): Promise<PickupOptionDto> {
+    return this.prisma.$transaction(async (tx) => {
+      // The count runs under the row lock, so two concurrent adds can't
+      // both see 2 pairs and leave the listing with 4.
+      await this.lockEditableListing(tx, sellerId, listingId);
+      const count = await tx.pickupOption.count({ where: { listingId } });
+      if (count >= MAX_PICKUP_OPTIONS) {
+        throw new AppException(
+          HttpStatus.CONFLICT,
+          ErrorCode.PICKUP_OPTION_LIMIT,
+          `A listing can have at most ${MAX_PICKUP_OPTIONS} pickup options.`,
+        );
+      }
+      const option = await tx.pickupOption.create({
+        data: {
+          listingId,
+          locationLabel: dto.locationLabel,
+          weekdays: dto.weekdays,
+          startTime: fromHhmm(dto.startTime),
+          endTime: fromHhmm(dto.endTime),
+        },
+      });
+      return toPickupOption(option);
+    });
+  }
+
+  async removePickupOption(
+    sellerId: string,
+    listingId: string,
+    pickupOptionId: string,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Under the row lock, a reservation can't pick this pair between the
+      // status check and the delete, and two removes can't both see 2 pairs.
+      await this.lockEditableListing(tx, sellerId, listingId);
+      const option = isUUID(pickupOptionId)
+        ? await tx.pickupOption.findFirst({
+            where: { id: pickupOptionId, listingId },
+            select: { id: true },
+          })
+        : null;
+      if (!option) {
+        throw new AppException(
+          HttpStatus.NOT_FOUND,
+          ErrorCode.PICKUP_OPTION_NOT_FOUND,
+          'Pickup option not found.',
+        );
+      }
+      const count = await tx.pickupOption.count({ where: { listingId } });
+      if (count <= 1) {
+        throw new AppException(
+          HttpStatus.CONFLICT,
+          ErrorCode.LAST_PICKUP_OPTION,
+          'A listing needs at least one pickup option.',
+        );
+      }
+      await tx.pickupOption.delete({ where: { id: option.id } });
+    });
+  }
+
+  // The row lock orders the edit against a reservation: a reservation waits
+  // for the edit to commit, and an edit that waited for a reservation then
+  // finds the listing Pending.
+  private async lockEditableListing(
+    tx: Prisma.TransactionClient,
+    sellerId: string,
+    listingId: string,
+  ): Promise<void> {
+    const [listing] = isUUID(listingId)
+      ? await tx.$queryRaw<{ sellerId: string; status: ListingStatus }[]>`
+          SELECT seller_id AS "sellerId", status::text AS status
+          FROM listings WHERE id = ${listingId}::uuid FOR UPDATE`
+      : [];
+    if (!listing) {
+      throw new AppException(
+        HttpStatus.NOT_FOUND,
+        ErrorCode.LISTING_NOT_FOUND,
+        'Listing not found.',
+      );
+    }
+    if (listing.sellerId !== sellerId) {
+      throw new AppException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.NOT_LISTING_OWNER,
+        'You can only edit your own listings.',
+      );
+    }
+    if (listing.status !== 'ACTIVE') {
+      throw new AppException(
+        HttpStatus.CONFLICT,
+        ErrorCode.LISTING_NOT_EDITABLE,
+        'This listing was already reserved and can no longer be edited.',
+      );
+    }
   }
 
   // The rows are recreated rather than updated, because moving a photo to a

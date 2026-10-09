@@ -6,18 +6,44 @@ const time = (hhmm: string) => new Date(`1970-01-01T${hhmm}:00.000Z`);
 interface ListingOverrides {
   status?: ListingStatus;
   photoCount?: number;
+  pickupOptionCount?: number;
   title?: string;
   publishedAt?: Date;
   category?: { name: string; slug: string };
 }
 
-/** A listing of `sellerId` with `photoCount` photos and two pickup options. */
+const PICKUP_OPTIONS = [
+  {
+    locationLabel: 'Café Toscano, Av. Álvaro Obregón',
+    weekdays: ['SATURDAY' as const],
+    startTime: time('10:00'),
+    endTime: time('13:00'),
+  },
+  {
+    locationLabel: 'Plaza Principal',
+    weekdays: ['MONDAY' as const, 'WEDNESDAY' as const],
+    startTime: time('18:30'),
+    endTime: time('20:00'),
+  },
+  {
+    locationLabel: 'Centro Comercial Hupermall',
+    weekdays: ['SUNDAY' as const],
+    startTime: time('16:00'),
+    endTime: time('18:00'),
+  },
+];
+
+/**
+ * A listing of `sellerId` with `photoCount` photos and `pickupOptionCount`
+ * pickup options (1–3, two by default).
+ */
 export async function createListing(
   prisma: PrismaService,
   sellerId: string,
   {
     status = 'ACTIVE',
     photoCount = 1,
+    pickupOptionCount = 2,
     title = 'Silla de comedor en roble',
     publishedAt,
     category: { name, slug } = { name: 'Muebles', slug: 'muebles' },
@@ -46,20 +72,7 @@ export async function createListing(
         })).reverse(),
       },
       pickupOptions: {
-        create: [
-          {
-            locationLabel: 'Café Toscano, Av. Álvaro Obregón',
-            weekdays: ['SATURDAY'],
-            startTime: time('10:00'),
-            endTime: time('13:00'),
-          },
-          {
-            locationLabel: 'Plaza Principal',
-            weekdays: ['MONDAY', 'WEDNESDAY'],
-            startTime: time('18:30'),
-            endTime: time('20:00'),
-          },
-        ],
+        create: PICKUP_OPTIONS.slice(0, pickupOptionCount),
       },
     },
     include: { category: true, pickupOptions: true },

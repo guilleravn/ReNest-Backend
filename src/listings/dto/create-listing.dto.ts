@@ -23,6 +23,7 @@ import { ListingCondition, Weekday } from '../../generated/prisma/enums.js';
 
 export const MIN_PRICE_CENTS = 100;
 export const MAX_PRICE_CENTS = 2_000_000_000;
+export const MAX_PICKUP_OPTIONS = 3;
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -139,10 +140,14 @@ export class CreateListingDto {
   @IsString({ each: true })
   photoKeys!: string[];
 
-  @ApiProperty({ type: [PickupOptionInputDto], minItems: 1, maxItems: 3 })
+  @ApiProperty({
+    type: [PickupOptionInputDto],
+    minItems: 1,
+    maxItems: MAX_PICKUP_OPTIONS,
+  })
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(3)
+  @ArrayMaxSize(MAX_PICKUP_OPTIONS)
   @ValidateNested({ each: true })
   @Type(() => PickupOptionInputDto)
   pickupOptions!: PickupOptionInputDto[];
