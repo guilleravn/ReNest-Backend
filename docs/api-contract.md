@@ -207,13 +207,14 @@ Errors: `400 VALIDATION_ERROR`, `401 INVALID_CREDENTIALS` (same for unknown emai
 ### `GET /categories` (public)
 `200 OK` → `[{ "id", "name", "slug" }]` sorted by `name`.
 
-### `GET /listings` (public) — feed, search, category filter
+### `GET /listings` (public) — feed, search, category and city filters
 Only `status = ACTIVE`. Order: `publishedAt DESC, id DESC`.
 
 | Query | Rule |
 |---|---|
 | `q` | optional, 2–60 chars after trimming. `title ILIKE '%q%'` (`%`, `_`, `\` escaped). |
 | `category` | optional slug. Unknown slug → empty `data`. |
+| `city` | optional `City` (BRW-11). Filters on the seller's city; absent → every city. Any other value → `400 VALIDATION_ERROR` (field `city`). |
 | `limit`, `cursor` | §1. A malformed `cursor` → `400 VALIDATION_ERROR` (field `cursor`). A cursor stays valid after its listing leaves the feed. |
 
 `200 OK` → `{ "data": ListingCard[], "nextCursor": "…" | null }`

@@ -1,6 +1,15 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Length,
+  Max,
+  Min,
+} from 'class-validator';
+import { City } from '../../generated/prisma/enums.js';
 
 export class FeedQueryDto {
   @ApiPropertyOptional({
@@ -24,6 +33,15 @@ export class FeedQueryDto {
   @IsOptional()
   @IsString()
   category?: string;
+
+  @ApiPropertyOptional({
+    enum: City,
+    enumName: 'City',
+    description: "Seller's city. Absent returns every city.",
+  })
+  @IsOptional()
+  @IsEnum(City)
+  city?: City;
 
   @ApiPropertyOptional({ minimum: 1, maximum: 50, default: 20 })
   @IsOptional()
