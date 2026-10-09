@@ -87,35 +87,7 @@ export class ListingsService {
     dto: UpdateListingDto,
   ): Promise<ListingDetailDto> {
     await this.prisma.$transaction(async (tx) => {
-      // The row lock orders the edit against a reservation: a reservation
-      // waits for the edit to commit, and an edit that waited for a
-      // reservation then finds the listing Pending.
-      const [listing] = isUUID(listingId)
-        ? await tx.$queryRaw<{ sellerId: string; status: ListingStatus }[]>`
-            SELECT seller_id AS "sellerId", status::text AS status
-            FROM listings WHERE id = ${listingId}::uuid FOR UPDATE`
-        : [];
-      if (!listing) {
-        throw new AppException(
-          HttpStatus.NOT_FOUND,
-          ErrorCode.LISTING_NOT_FOUND,
-          'Listing not found.',
-        );
-      }
-      if (listing.sellerId !== sellerId) {
-        throw new AppException(
-          HttpStatus.FORBIDDEN,
-          ErrorCode.NOT_LISTING_OWNER,
-          'You can only edit your own listings.',
-        );
-      }
-      if (listing.status !== 'ACTIVE') {
-        throw new AppException(
-          HttpStatus.CONFLICT,
-          ErrorCode.LISTING_NOT_EDITABLE,
-          'This listing was already reserved and can no longer be edited.',
-        );
-      }
+      await this.lockEditableListing(tx, sellerId, listingId);
       if (dto.categoryId !== undefined) {
         const category = await tx.category.findUnique({
           where: { id: dto.categoryId },
@@ -147,6 +119,42 @@ export class ListingsService {
       });
     });
     return this.getDetail(listingId, sellerId);
+  }
+
+  // The row lock orders the edit against a reservation: a reservation waits
+  // for the edit to commit, and an edit that waited for a reservation then
+  // finds the listing Pending.
+  private async lockEditableListing(
+    tx: Prisma.TransactionClient,
+    sellerId: string,
+    listingId: string,
+  ): Promise<void> {
+    const [listing] = isUUID(listingId)
+      ? await tx.$queryRaw<{ sellerId: string; status: ListingStatus }[]>`
+          SELECT seller_id AS "sellerId", status::text AS status
+          FROM listings WHERE id = ${listingId}::uuid FOR UPDATE`
+      : [];
+    if (!listing) {
+      throw new AppException(
+        HttpStatus.NOT_FOUND,
+        ErrorCode.LISTING_NOT_FOUND,
+        'Listing not found.',
+      );
+    }
+    if (listing.sellerId !== sellerId) {
+      throw new AppException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.NOT_LISTING_OWNER,
+        'You can only edit your own listings.',
+      );
+    }
+    if (listing.status !== 'ACTIVE') {
+      throw new AppException(
+        HttpStatus.CONFLICT,
+        ErrorCode.LISTING_NOT_EDITABLE,
+        'This listing was already reserved and can no longer be edited.',
+      );
+    }
   }
 
   // The rows are recreated rather than updated, because moving a photo to a
