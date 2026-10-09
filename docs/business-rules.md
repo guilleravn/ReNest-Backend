@@ -71,7 +71,7 @@ Each side completes only with its own confirmation. The seller's handover doesn'
 | AUTH-5 | Login with email and password. On failure the message is always "Incorrect email or password", never revealing whether the email exists. | Added |
 | AUTH-6 | A single session token lasting 1 day, with no refresh. When it expires, the user logs in again. Logout discards the token on the client. | Added |
 | AUTH-7 | No avatar upload in R1. The app shows the user's initials. | Added |
-| AUTH-8 | The Account tab ("Cuenta") shows the user's name, email, phone and city (read-only) and a logout button. | Added |
+| AUTH-8 | The account page, opened from "Mi cuenta" in the avatar menu, shows the user's name, email, phone and city (read-only) and a logout button. | Added |
 | AUTH-9 | Login and register are rate limited per client IP to slow down brute force and mass sign-ups. Login: 5 requests per minute (failed and successful attempts both count). Register: 10 requests per hour. Each endpoint has its own counter. Over the limit the API answers `429 RATE_LIMITED` with a `Retry-After` header (seconds), even if the credentials are correct. The limits are configurable (`AUTH_LOGIN_LIMIT`, `AUTH_LOGIN_WINDOW`, `AUTH_REGISTER_LIMIT`, `AUTH_REGISTER_WINDOW`). | Added |
 
 ---
