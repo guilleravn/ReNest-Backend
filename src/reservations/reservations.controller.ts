@@ -25,7 +25,11 @@ import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { ConfirmReceptionDto } from './dto/confirm-reception.dto.js';
 import { CreateReservationDto } from './dto/create-reservation.dto.js';
-import { ReservationDetailDto } from './dto/reservation-detail.dto.js';
+import { RateSellerDto } from './dto/rate-seller.dto.js';
+import {
+  ReservationDetailDto,
+  ReservationRatingDto,
+} from './dto/reservation-detail.dto.js';
 import { ReservationsService } from './reservations.service.js';
 
 @ApiTags('reservations')
@@ -115,5 +119,29 @@ export class ReservationsController {
     @Body() dto: ConfirmReceptionDto,
   ): Promise<ReservationDetailDto> {
     return this.reservations.confirmReception(reservationId, userId, dto);
+  }
+
+  @Post(':reservationId/rating')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Buyer rates the seller',
+    description:
+      '1 to 5 stars, no comment. Only after the buyer confirmed reception, once, and it cannot be changed. Counts toward the seller’s average.',
+  })
+  @ApiCreatedResponse({ type: ReservationRatingDto })
+  @ApiBadRequestResponse({ description: 'VALIDATION_ERROR' })
+  @ApiUnauthorizedResponse({ description: 'UNAUTHORIZED' })
+  @ApiForbiddenResponse({ description: 'NOT_RESERVATION_BUYER' })
+  @ApiNotFoundResponse({ description: 'RESERVATION_NOT_FOUND' })
+  @ApiConflictResponse({
+    description: 'RECEPTION_NOT_CONFIRMED, ALREADY_RATED',
+  })
+  rateSeller(
+    @Param('reservationId') reservationId: string,
+    @CurrentUser() userId: string,
+    @Body() dto: RateSellerDto,
+  ): Promise<ReservationRatingDto> {
+    return this.reservations.rateSeller(reservationId, userId, dto);
   }
 }
